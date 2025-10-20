@@ -1,3 +1,5 @@
+// server.js (FINAL, REGEX-BASED SOLUTION)
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -17,25 +19,36 @@ const __dirname = path.dirname(__filename);
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// API Routes (These must come BEFORE the catch-all)
+// API Routes (These must come first)
 app.use('/api/users', userRoutes);
 app.use('/api/kingschat', kingschatRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/innovate', innovateRoutes);
 
-// --- THIS IS THE FIX ---
-// For any GET request that isn't for an API route or a static file,
-// serve the main index.html file. This allows the frontend to handle routing.
-app.get('*', (req, res) => {
+// Serve static assets from the 'public' and 'uploads' folders
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
+// --- THIS IS THE DEFINITIVE FIX ---
+// This catch-all route uses a regular expression.
+// It matches any route that does NOT start with '/api/' and does NOT contain a dot (.),
+// which means it will catch frontend routes like '/placements' or '/profile'
+// but ignore requests for files like 'style.css' or 'main.js'.
+app.get(/^\/(?!api).*/, (req, res) => {
+    // Check if the path looks like a file request
+    if (path.extname(req.path).length > 0) {
+        // If it looks like a file, let the static middleware handle it or 404
+        return res.status(404).end();
+    }
+    // For all other frontend routes, serve the main HTML file.
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-// ----------------------
+// ---------------------------------
+
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log('Press Ctrl+C to stop');
 });
