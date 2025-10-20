@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" x-data>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- KingsChat SDK Styles -->
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+    <!-- Custom Global CSS -->
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <!-- Axios for API calls -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- KingsChat SDK Styles -->
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+
+</head>
+
+<body x-init="
+    if (!$store.auth.loggedIn) {
+        window.location.href = '/information.html';
+    }
+">
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
+        <div class="container-fluid">
+            <a class="navbar-brand text-gold" href="/">
+                <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
+                <b>LW 4.0</b>
+
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link text-gold active" aria-current="page" href="/information.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/shop.html">Shop</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/explore.html">Explore</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/placements.html">Placements</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/innovate.html">Innovate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/about.html">About</a>
+                    </li>
+                    <div class="d-flex align-items-center" x-data x-cloak>
+                        <!-- Show these buttons if user is NOT logged in -->
+                        <template x-if="!$store.auth.loggedIn">
+                            <div class="d-flex">
+                                <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
+                                    In</button>
+
+                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+
+                            </div>
+                        </template>
+
+                        <!-- Show this dropdown if user IS logged in -->
+                        <template x-if="$store.auth.loggedIn">
+                            <div class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle text-gold" role="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item" href="#"
+                                            @click.prevent="$store.auth.logout()">Logout</a></li>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </ul>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- Sign In/Up Modal (NEW DESIGN) -->
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="btn-kingschat-login" @click.prevent="loginWithKingsChat()">Login with
+                            KingsChat</button>
+
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
+                    </div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container my-5 py-5" x-data="profilePage">
+        <div class="row">
+            <div class="col-lg-8 offset-lg-2">
+                <h1 class="mb-4">My Profile</h1>
+
+                <!-- KingsChat Linking Section -->
+                <div class="card mb-4">
+                    <div class="card-body text-center">
+                        <template x-if="user.kingschatId">
+                            <div class="p-3">
+                                <h5 class="text-success">✓ KingsChat Account Linked</h5>
+                                <img :src="user.kingschatAvatarUrl" class="rounded-circle my-3" width="100" height="100"
+                                    alt="KC Avatar" x-show="user.kingschatAvatarUrl">
+                                <p class="mb-0"><strong>KC Username:</strong> <span
+                                        x-text="user.kingschatHandle"></span></p>
+                            </div>
+                        </template>
+                        <template x-if="!user.kingschatId">
+                            <div class="p-3">
+                                <h5>Link your KingsChat Account</h5>
+                                <p>Fetch your profile information and enable KingsChat features.</p>
+                                <div class="d-flex justify-content-center">
+                                    <a class="kc-web-sdk-btn" @click.prevent="linkWithKingsChat()"></a>
+                                </div>
+                                <div x-show="kcMessage" class="alert mt-3"
+                                    :class="kcError ? 'alert-danger' : 'alert-success'" x-text="kcMessage"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- VIEW MODE -->
+                <div class="card" x-show="!isEditing" x-transition>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Profile Details</span>
+                        <button class="btn btn-sm btn-outline-primary" @click="startEditing()">Edit Profile</button>
+                    </div>
+                    <div class="card-body">
+                        <template x-if="user">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><strong>Full Name:</strong> <span
+                                        x-text="`${user.firstName || ''} ${user.lastName || ''}`.trim()"></span></li>
+                                <li class="list-group-item"><strong>Username:</strong> <span
+                                        x-text="user.username || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Email:</strong> <span
+                                        x-text="user.email || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Phone:</strong> <span
+                                        x-text="user.phoneNumber || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Date of Birth:</strong> <span
+                                        x-text="user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : 'Not Provided'"></span>
+                                </li>
+                                <hr>
+                                <li class="list-group-item"><strong>Zone:</strong> <span
+                                        x-text="user.zone || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Group:</strong> <span
+                                        x-text="user.group || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Church:</strong> <span
+                                        x-text="user.church || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Leadership Role:</strong> <span
+                                        x-text="user.leadership_role || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Ministry Staff:</strong> <span
+                                        x-text="user.ministry_staff ? 'Yes' : (user.ministry_staff === false ? 'No' : 'Not Provided')"></span>
+                                </li>
+                                <li class="list-group-item"><strong>Ministry Department:</strong> <span
+                                        x-text="user.ministry_department || 'Not Provided'"></span></li>
+                                <hr>
+                                <li class="list-group-item"><strong>Educational Qualification:</strong> <span
+                                        x-text="user.educational_qualification || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Institution of Completion:</strong> <span
+                                        x-text="user.institution_of_completion || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Professional Qualification:</strong> <span
+                                        x-text="user.professional_qualification || 'Not Provided'"></span></li>
+                                <hr>
+                                <li class="list-group-item"><strong>Has Work Experience:</strong> <span
+                                        x-text="user.has_work_experience ? 'Yes' : (user.has_work_experience === false ? 'No' : 'Not Provided')"></span>
+                                </li>
+                                <li class="list-group-item"><strong>Organisation of Employment:</strong> <span
+                                        x-text="user.organisation_of_employment || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Duration of Employment:</strong> <span
+                                        x-text="user.duration_of_employment || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Significant Achievements:</strong>
+                                    <p style="white-space: pre-wrap;" class="mb-0"
+                                        x-text="user.significant_achievements || 'Not Provided'"></p>
+                                </li>
+                                <hr>
+                                <li class="list-group-item"><strong>Areas of Interest:</strong> <span
+                                        x-text="user.areas_of_interest?.join(', ') || 'Not Provided'"></span></li>
+                                <li class="list-group-item"><strong>Apply For:</strong> <span
+                                        x-text="user.apply_for || 'Not Provided'"></span></li>
+                            </ul>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- EDIT MODE -->
+                <div class="card" x-show="isEditing" x-transition style="display: none;">
+                    <div class="card-header"><span>Edit Profile Details</span></div>
+                    <div class="card-body">
+                        <form @submit.prevent="saveProfile">
+                            <div class="row mb-3">
+                                <div class="col"><label class="form-label">First Name</label><input type="text"
+                                        class="form-control" x-model="formData.firstName"></div>
+                                <div class="col"><label class="form-label">Last Name</label><input type="text"
+                                        class="form-control" x-model="formData.lastName"></div>
+                            </div>
+                            <div class="mb-3"><label class="form-label">Zone</label><input type="text"
+                                    class="form-control" x-model="formData.zone"></div>
+                            <div class="mb-3"><label class="form-label">Group</label><input type="text"
+                                    class="form-control" x-model="formData.group"></div>
+                            <div class="mb-3"><label class="form-label">Church</label><input type="text"
+                                    class="form-control" x-model="formData.church"></div>
+                            <div class="mb-3"><label class="form-label">Leadership Role</label><input type="text"
+                                    class="form-control" x-model="formData.leadership_role"></div>
+                            <div class="mb-3"><label class="form-label">Ministry Staff</label><select
+                                    class="form-select" x-model="formData.ministry_staff">
+                                    <option :value="true">Yes</option>
+                                    <option :value="false">No</option>
+                                </select></div>
+                            <div class="mb-3" x-show="formData.ministry_staff"><label class="form-label">Ministry
+                                    Department</label><input type="text" class="form-control"
+                                    x-model="formData.ministry_department"></div>
+                            <hr>
+                            <div class="mb-3"><label class="form-label">Educational Qualification</label><input
+                                    type="text" class="form-control" x-model="formData.educational_qualification"></div>
+                            <div class="mb-3"><label class="form-label">Institution of Completion</label><input
+                                    type="text" class="form-control" x-model="formData.institution_of_completion"></div>
+                            <div class="mb-3"><label class="form-label">Professional Qualification</label><input
+                                    type="text" class="form-control" x-model="formData.professional_qualification">
+                            </div>
+                            <hr>
+                            <div class="mb-3"><label class="form-label">Work Experience</label><select
+                                    class="form-select" x-model="formData.has_work_experience">
+                                    <option :value="true">Yes</option>
+                                    <option :value="false">No</option>
+                                </select></div>
+                            <div x-show="formData.has_work_experience">
+                                <div class="mb-3"><label class="form-label">Organisation of Employment</label><input
+                                        type="text" class="form-control" x-model="formData.organisation_of_employment">
+                                </div>
+                                <div class="mb-3"><label class="form-label">Duration</label><input type="text"
+                                        class="form-control" x-model="formData.duration_of_employment"></div>
+                                <div class="mb-3"><label class="form-label">Significant Achievements</label><textarea
+                                        class="form-control" rows="3"
+                                        x-model="formData.significant_achievements"></textarea></div>
+                            </div>
+                            <hr>
+                            <div class="mb-3">
+                                <label class="form-label">Areas of Interest</label>
+                                <input type="text" class="form-control" x-model="interestInput"
+                                    @keydown.enter.prevent="addInterest" placeholder="Type an interest and press Enter">
+                                <div class="mt-2">
+                                    <template x-for="(interest, index) in formData.areas_of_interest" :key="index"><span
+                                            class="badge bg-primary me-1" @click="removeInterest(index)"
+                                            style="cursor: pointer;" x-text="interest + ' &times;'"></span></template>
+                                </div>
+                            </div>
+                            <div class="mb-3"><label class="form-label">Apply For</label><select class="form-select"
+                                    x-model="formData.apply_for">
+                                    <option value="specific_role">Specific Role</option>
+                                    <option value="existing_opening">Existing Opening</option>
+                                </select></div>
+
+                            <div x-show="saveMessage" class="alert mt-3"
+                                :class="saveError ? 'alert-danger' : 'alert-success'" x-text="saveMessage"></div>
+                            <div class="d-flex justify-content-end mt-4">
+                                <button type="button" class="btn btn-secondary me-2"
+                                    @click="cancelEdit()">Cancel</button>
+                                <button type="submit" class="btn btn-gold" :disabled="saveLoading"><span
+                                        x-show="!saveLoading">Save Changes</span><span
+                                        x-show="saveLoading">Saving...</span></button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KingsChat Web SDK -->
+    <script src="https://unpkg.com/kingschat-web-sdk"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- This creates window.kingsChatWebSdk -->
+    <script src="/vendor/kingschat.bundle.js"></script>
+
+    <!-- This uses window.kingsChatWebSdk -->
+    <script src="/js/main.js" type="module"></script> <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+</body>
+
+</html>

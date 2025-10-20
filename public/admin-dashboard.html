@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/global.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body x-data="{
+    protectAdminRoute() {
+        this.$nextTick(() => {
+            if (!$store.auth.loggedIn || $store.auth.user.role !== 'Admin') {
+                window.location.href = '/information.html'; // Redirect non-admins
+            }
+        });
+    }
+}" x-init="protectAdminRoute()">
+
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
+        <div class="container-fluid">
+            <a class="navbar-brand text-gold" href="/">
+                <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
+                <b>LW 4.0</b>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link text-gold active" aria-current="page" href="/information.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/shop.html">Shop</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/explore.html">Explore</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/placements.html">Placements</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/innovate.html">Innovate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/about.html">About</a>
+                    </li>
+                    <div class="d-flex align-items-center" x-data x-cloak>
+                        <!-- Show these buttons if user is NOT logged in -->
+                        <template x-if="!$store.auth.loggedIn">
+                            <div class="d-flex">
+                                <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
+                                    In</button>
+                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+                            </div>
+                        </template>
+
+                        <!-- Show this dropdown if user IS logged in -->
+                        <template x-if="$store.auth.loggedIn">
+                            <div class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle text-gold" role="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item" href="#"
+                                            @click.prevent="$store.auth.logout()">Logout</a></li>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </ul>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5 pt-5" x-data="adminDashboard">
+        <h1 class="mb-4">User Management</h1>
+
+        <!-- Server Message -->
+        <div x-show="message" class="alert" :class="error ? 'alert-danger' : 'alert-success'" x-text="message"></div>
+
+        <!-- Loading Spinner -->
+        <div x-show="loading" class="text-center py-5">
+            <div class="spinner-border text-gold" role="status"></div>
+        </div>
+
+        <!-- User List Table -->
+        <div x-show="!loading" class="card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Current Role</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="user in users" :key="user.id">
+                            <tr>
+                                <td x-text="user.username"></td>
+                                <td x-text="user.email"></td>
+                                <td>
+                                    <span class="badge"
+                                        :class="{ 'bg-primary': user.role === 'Admin', 'bg-success': user.role === 'SBO', 'bg-secondary': user.role === 'User' }"
+                                        x-text="user.role">
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <!-- Only show promote button if user is NOT already an Admin -->
+                                    <template x-if="user.role !== 'Admin'">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                            @click="changeRole(user.id, 'Admin')">
+                                            Promote to Admin
+                                        </button>
+                                    </template>
+                                    <!-- You could add demote buttons here as well -->
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/main.js" type="module"></script>
+</body>
+
+</html>

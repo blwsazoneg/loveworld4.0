@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placements - LW 4.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/placements.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
+        <div class="container-fluid">
+            <a class="navbar-brand text-gold" href="/">
+                <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
+                <b>LW 4.0</b>
+
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link text-gold active" aria-current="page" href="/information.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/shop.html">Shop</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/explore.html">Explore</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/placements.html">Placements</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/innovate.html">Innovate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/about.html">About</a>
+                    </li>
+                    <div class="d-flex align-items-center" x-data x-cloak>
+                        <!-- Show these buttons if user is NOT logged in -->
+                        <template x-if="!$store.auth.loggedIn">
+                            <div class="d-flex">
+                                <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
+                                    In</button>
+                                <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#signInUpModal"
+                                    @click="$data.showRegisterForm = true">Sign Up</button>
+                            </div>
+                        </template>
+
+                        <!-- Show this dropdown if user IS logged in -->
+                        <template x-if="$store.auth.loggedIn">
+                            <div class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle text-gold" role="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item" href="#"
+                                            @click.prevent="$store.auth.logout()">Logout</a></li>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </ul>
+            </div>
+
+        </div>
+    </nav>
+
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
+
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
+                    </div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section
+        class="hero-section placements-hero text-white d-flex align-items-center justify-content-center text-center">
+        <div class="hero-overlay" style="background-color: rgba(0,0,0,0.3);"></div>
+        <div class="container hero-content">
+            <h1 class="display-2 fw-bold">Work with a strategic organisation</h1>
+            <button class="btn btn-connect mt-4" @click="$refs.mainContent.scrollIntoView({ behavior: 'smooth' })">
+                Connect
+            </button>
+        </div>
+    </section>
+
+    <!-- Intro Text Section -->
+    <section class="intro-text-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                    <p class="lead">Working with a Loveworld SBO is a great way to expand your horizon, by gaining
+                        experience and expertise through service and collaboration...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div x-ref="mainContent">
+        <!-- Application Form Section -->
+        <section class="application-form-section" x-data="applicationForm"
+            x-show="!$store.auth.user?.educational_qualification" x-cloak x-transition>
+            <div class="container">
+                <!-- Show login prompt if user is not logged in -->
+                <div x-show="!$store.auth.loggedIn" class="text-center">
+                    <h3 class="text-dark">Please Log In to Connect</h3>
+                    <p class="text-muted">You need to be logged in to complete the application form.</p>
+                    <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#signInUpModal">Login or Sign
+                        Up</button>
+                </div>
+
+                <!-- Show the form if user IS logged in -->
+                <div x-show="$store.auth.loggedIn" class="form-wrapper">
+                    <div class="form-container">
+                        <p class="form-intro-text text-center">Complete the details below to connect with our Loveworld
+                            business organisations.</p>
+                        <form @submit.prevent="handleSubmit">
+                            <!-- All form fields from your images -->
+                            <div class="form-row"><label>Zone</label><input type="text" class="form-control"
+                                    x-model="formData.zone"></div>
+                            <div class="form-row"><label>Group</label><input type="text" class="form-control"
+                                    x-model="formData.group"></div>
+                            <div class="form-row"><label>Church</label><input type="text" class="form-control"
+                                    x-model="formData.church"></div>
+                            <div class="form-row"><label>Leadership Role</label><input type="text" class="form-control"
+                                    x-model="formData.leadership_role"></div>
+
+                            <div class="form-row"><label>Ministry Staff</label>
+                                <div>
+                                    <div class="form-check form-check-inline"><input class="form-check-input"
+                                            type="radio" :value="true" x-model="formData.ministry_staff"><label
+                                            class="form-check-label">Yes</label></div>
+                                    <div class="form-check form-check-inline"><input class="form-check-input"
+                                            type="radio" :value="false" x-model="formData.ministry_staff"><label
+                                            class="form-check-label">No</label></div>
+                                </div>
+                            </div>
+                            <div class="form-row" x-show="formData.ministry_staff"><label>(if yes)<br>Ministry
+                                    Department</label><input type="text" class="form-control"
+                                    x-model="formData.ministry_department"></div>
+
+                            <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+
+                            <div class="form-row"><label>Educational Qualification</label><input type="text"
+                                    class="form-control" x-model="formData.educational_qualification"></div>
+                            <div class="form-row"><label>Institution of Completion</label><input type="text"
+                                    class="form-control" x-model="formData.institution_of_completion"></div>
+                            <div class="form-row"><label>Professional Qualification</label><input type="text"
+                                    class="form-control" x-model="formData.professional_qualification"></div>
+
+                            <div class="form-row"><label>Work experience</label>
+                                <div>
+                                    <div class="form-check form-check-inline"><input class="form-check-input"
+                                            type="radio" :value="true" x-model="formData.has_work_experience"><label
+                                            class="form-check-label">Yes</label></div>
+                                    <div class="form-check form-check-inline"><input class="form-check-input"
+                                            type="radio" :value="false" x-model="formData.has_work_experience"><label
+                                            class="form-check-label">No</label></div>
+                                </div>
+                            </div>
+                            <div x-show="formData.has_work_experience">
+                                <div class="form-row"><label>(if yes)<br>Organisation of employment</label><input
+                                        type="text" class="form-control" x-model="formData.organisation_of_employment">
+                                </div>
+                                <div class="form-row"><label>Duration</label><input type="text" class="form-control"
+                                        x-model="formData.duration_of_employment"></div>
+                                <div class="form-row"><label>Significant Achievements</label><textarea
+                                        class="form-control" rows="3" style="border-radius: 20px;"
+                                        x-model="formData.significant_achievements"></textarea></div>
+                            </div>
+
+                            <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+
+                            <div class="form-row">
+                                <label for="areasOfInterest">Areas of Interest</label>
+                                <div>
+                                    <input type="text" class="form-control" id="areasOfInterest" x-model="interestInput"
+                                        @keydown.enter.prevent="addInterest"
+                                        placeholder="Type an interest and press Enter">
+                                    <div class="form-text text-white-50">Click a tag to remove it.</div>
+                                    <div class="mt-2">
+                                        <template x-for="(interest, index) in formData.areas_of_interest" :key="index">
+                                            <span class="badge bg-primary me-1" @click="removeInterest(index)"
+                                                style="cursor: pointer;" x-text="interest + ' &times;'"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row"><label>Apply for</label>
+                                <div>
+                                    <div class="form-check"><input class="form-check-input" type="radio"
+                                            value="specific_role" x-model="formData.apply_for"><label
+                                            class="form-check-label">specific role</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="radio"
+                                            value="existing_opening" x-model="formData.apply_for"><label
+                                            class="form-check-label">existing opening</label></div>
+                                </div>
+                            </div>
+
+                            <div x-show="message" class="alert mt-4 text-center"
+                                :class="error ? 'alert-danger' : 'alert-success'" x-text="message"></div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn-submit-app" :disabled="loading">
+                                    Save Profile & View Openings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Job Listings Section -->
+        <section class="my-5 px-5 job-listing-section" x-data="jobBoard"
+            x-show="$store.auth.user?.educational_qualification" x-cloak x-transition>
+            <div class="row mb-4">
+                <div class="col-lg-8 mx-auto text-center">
+                    <h2 class="fw-bold">Current Openings</h2>
+                    <p class="lead text-muted">Your profile has been updated. Please review the available openings
+                        below.
+                    </p> <!-- Search Bar -->
+                    <form @submit.prevent="searchJobs" class="mt-4">
+                        <div class="input-group">
+                            <input type="text" class="form-control form-control-lg"
+                                placeholder="Search by role, SBO, or tag..." x-model="searchTerm">
+                            <button class="btn btn-gold" type="submit">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Job Listings -->
+            <div class="row">
+                <div class="col-md-10 mx-auto">
+                    <div x-show="loading" class="text-center py-5">
+                        <div class="spinner-border text-gold" role="status"></div>
+                    </div>
+                    <div x-show="error" class="alert alert-danger" x-text="error"></div>
+                    <div x-show="!loading && jobs.length > 0">
+                        <template x-for="job in jobs" :key="job.id">
+                            <div class="job-card card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5 class="card-title" x-text="job.title"></h5>
+                                            <h6 class="card-subtitle mb-2 text-muted">Posted by: <span
+                                                    x-text="job.created_by_username"></span></h6>
+                                        </div>
+                                        <a :href="`/job-detail.html?id=${job.id}`" class="btn btn-outline-gold">View &
+                                            Apply</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="!loading && jobs.length === 0 && !error" class="text-center py-5 bg-light rounded">
+                        <h4>No Openings Found</h4>
+                        <p class="text-muted">Try adjusting your search terms or check back later to connect.</p>
+                    </div>
+                    <!-- Pagination would go here if needed -->
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script src="/vendor/kingschat.bundle.js"></script>
+    <script src="/js/main.js" type="module"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+</body>
+
+</html>

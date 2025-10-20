@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Profile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/signup.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- KingsChat SDK Styles -->
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+
+</head>
+
+<body class="signup-page">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light" style="background-color: white;">
+        <div class="container-fluid">
+            <a class="navbar-brand text-gold" href="/">
+                <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top">
+                [Your Company Name]
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link text-gold active" aria-current="page" href="/information.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/shop.html">Shop</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/explore.html">Explore</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/placements.html">Placements</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/innovate.html">Innovate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/about.html">About</a>
+                    </li>
+                    <div class="d-flex align-items-center" x-data x-cloak>
+                        <!-- Show these buttons if user is NOT logged in -->
+                        <template x-if="!$store.auth.loggedIn">
+                            <div class="d-flex">
+                                <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
+                                    In</button>
+
+                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+
+                            </div>
+                        </template>
+
+                        <!-- Show this dropdown if user IS logged in -->
+                        <template x-if="$store.auth.loggedIn">
+                            <div class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle text-gold" role="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item" href="#"
+                                            @click.prevent="$store.auth.logout()">Logout</a></li>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </ul>
+            </div>
+
+        </div>
+    </nav>
+
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
+
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
+                    </div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="signup-container" x-data="authModal"> <!-- We can re-use the authModal logic -->
+        <!-- Left Panel: Image and Title -->
+        <div class="d-none d-lg-block signup-image-panel">
+            <h1>Develop <br> your <br> profile</h1>
+        </div>
+
+        <!-- Right Panel: Form -->
+        <div class="signup-form-panel">
+            <div class="signup-form-wrapper">
+                <h2>Tell us more about yourself</h2>
+                <form @submit.prevent="handleRegister">
+                    <div class="signup-form-row"><label for="firstName">First Name</label><input id="firstName"
+                            type="text" x-model="firstName" class="form-control" required></div>
+                    <div class="signup-form-row"><label for="lastName">Surname/Last name</label><input id="lastName"
+                            type="text" x-model="lastName" class="form-control" required></div>
+                    <div class="signup-form-row"><label for="dob">Date of Birth</label><input id="dob" type="date"
+                            x-model="dateOfBirth" class="form-control"></div>
+                    <div class="signup-form-row"><label for="email">Email</label><input id="email" type="email"
+                            x-model="email" class="form-control" required></div>
+                    <div class="signup-form-row"><label for="phone">Phone number</label><input id="phone" type="tel"
+                            x-model="phoneNumber" class="form-control"></div>
+
+                    <hr class="my-4" style="border-color: rgba(255,255,255,0.2);">
+
+                    <h2 class="text-center">Set Username & Password</h2>
+                    <div class="signup-form-row"><label for="username">Choose a username</label><input id="username"
+                            type="text" x-model="username" class="form-control" required></div>
+                    <div class="signup-form-row"><label for="password">Choose a password</label><input id="password"
+                            type="password" x-model="password" class="form-control" required></div>
+
+                    <div class="signup-form-row">
+                        <label for="confirmPassword">Confirm a password</label>
+                        <input id="confirmPassword" type="password" x-model="confirmPassword" class="form-control"
+                            required>
+                    </div>
+
+                    <!-- <button type="button" class="kc-web-sdk-btn" @click="loginWithKingsChat()"></button> -->
+
+                    <div x-show="registerMessage" class="alert mt-3"
+                        :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+
+                    <button type="submit" class="btn-create-profile">Create profile</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/kingschat.bundle.js"></script>
+    <script src="/js/main.js" type="module"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+</body>
+
+</html>

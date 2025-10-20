@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore the Loveworld Economy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="css/intro.css">
+    <link rel="stylesheet" href="/css/modal.css">
+
+    <!-- Axios for API calls -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- KingsChat SDK Styles -->
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+
+</head>
+
+<body class="intro-page">
+    <div class="intro-overlay"></div>
+    <div class="container d-flex flex-column justify-content-center align-items-center vh-100 text-white text-center"
+        x-data="{}" x-init="$el.classList.add('fade-in')">
+        <div class="position-absolute top-0 end-0 p-3">
+            <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#signInUpModal"
+                @click="$data.showRegisterForm = false">Sign
+                In</button>
+
+            <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+        </div>
+        <h1 class="display-3 mb-4 intro-text">Explore the Loveworld Economy</h1>
+        <button class="btn btn-lg btn-outline-light mt-4">Explore</button>
+    </div>
+
+    <!-- Sign In/Up Modal (NEW DESIGN) -->
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="kc-web-sdk-btn" @click.prevent="loginkWithKingsChat()"></button>
+
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
+                    </div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { startIntroTimer, stopIntroTimer, navigateToNextIntroPage, applyPageExitAnimation } from '/js/utils.js';
+        startIntroTimer('explore-economy.html'); // Pass current page filename
+        // Find the modal and listen for it to open
+        const signInUpModal = document.getElementById('signInUpModal');
+        if (signInUpModal) {
+            signInUpModal.addEventListener('show.bs.modal', event => {
+                // When the modal starts to open, stop the page transition timer
+                stopIntroTimer();
+            });
+
+            signInUpModal.addEventListener('hide.bs.modal', event => {
+                // Optional: When the modal closes, you could restart the timer
+                startIntroTimer('explore-economy.html');
+                // For now, we'll just leave it paused.
+            });
+        }
+
+    </script>
+    <!-- This creates window.kingsChatWebSdk -->
+    <script src="/vendor/kingschat.bundle.js"></script>
+
+    <!-- This uses window.kingsChatWebSdk -->
+    <script src="/js/main.js" type="module"></script>
+    <script src="/js/utils.js" type="module"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+</body>
+
+</html>

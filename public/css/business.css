@@ -1,0 +1,155 @@
+/* Hero Section for Business Page */
+.business-hero {
+    background-image: url('/images/business-bg.png');
+    /* New background image */
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(184, 134, 11, 0.4);
+    z-index: 1;
+}
+
+
+/* --------------------------------------------------- */
+/* NEW STYLES FOR THE CUSTOM BUSINESS REGISTRATION FORM */
+/* --------------------------------------------------- */
+
+/* Section background */
+.contact-form-section {
+    background-color: #b8860b;
+}
+
+/* This is the main wrapper that allows us to position the logo */
+.form-wrapper {
+    position: relative;
+    /* max-width: 800px; */
+    /* Control the max width of the form */
+    margin-top: -120px;
+}
+
+/* The gold logo, positioned absolutely to hang off the edge */
+.business-logo {
+    position: absolute;
+    top: -25px;
+    left: -10px;
+    /* Negative value pulls it outside the container */
+    width: 100px;
+    /* Adjust size as needed */
+    height: 100px;
+    z-index: 10;
+    /* Ensure it sits on top of the form panel */
+}
+
+/* The main dark form panel */
+.form-container {
+    /* This sets up the 3D space for the perspective effect */
+    transform-style: preserve-3d;
+    perspective: 800px;
+    /* How "deep" the 3D effect is. Tweak if needed. */
+
+    /* Position relative is crucial for the ::before pseudo-element */
+    position: relative;
+    overflow: hidden;
+    /* Clips the transformed pseudo-element */
+
+    /* The base linear gradient from black to gray */
+    background: linear-gradient(to right, #222 0%, #444 100%);
+
+    /* Keep the rounded corners and padding */
+    border-top-right-radius: 25px;
+    border-bottom-right-radius: 25px;
+    padding: 40px;
+    padding-left: 80px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    color: #fff;
+}
+
+/* This pseudo-element creates the warped dot pattern */
+.form-container::before {
+    content: '';
+    position: absolute;
+
+    /* Make it larger than the parent to allow for transformation without gaps */
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+
+    /* The repeating dot pattern (halftone) */
+    background-image: radial-gradient(circle,
+            rgba(255, 255, 255, 0.08) 1.5px,
+            /* Dot color and size */
+            transparent 1.5px);
+    background-size: 25px 25px;
+    /* Spacing of the dots */
+
+    /* This is the magic: We rotate the entire pattern in 3D space */
+    /* It gives the illusion of a warped, curved surface */
+    transform: rotateX(65deg) translateY(-30%);
+
+    z-index: 0;
+    /* Place it behind the form content */
+}
+
+/* We need to make sure the actual form content sits on top of the background */
+.form-container form,
+.form-container .form-intro-text {
+    position: relative;
+    z-index: 1;
+}
+
+/* Styling for the introductory text */
+.form-intro-text {
+    font-size: 1.1rem;
+    font-weight: 300;
+    margin-bottom: 30px;
+    text-align: center !important;
+}
+
+/* Grid layout for each form row (label + input) */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    /* Label takes 1 part, input takes 1.5 parts */
+    align-items: center;
+    gap: 20px;
+    /* Space between label and input */
+    margin-bottom: 25px;
+}
+
+/* Form labels */
+.form-container label {
+    font-weight: bold;
+    text-align: right;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* The black, lozenge-shaped input fields */
+.form-container .form-control {
+    background-color: #000;
+    border: 1px solid #444;
+    border-radius: 50px;
+    /* This creates the pill shape */
+    color: #fff;
+    padding: 8px 20px;
+}
+
+.form-container .form-control:focus {
+    background-color: #000;
+    color: #fff;
+    border-color: var(--gold);
+    /* Use the gold color from global.css */
+    box-shadow: 0 0 10px #b8860b;
+}
+
+/* Center the submit button */
+.form-actions {
+    text-align: center;
+    margin-top: 40px;
+}

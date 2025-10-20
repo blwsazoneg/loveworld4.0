@@ -1,0 +1,134 @@
+
+/* 1. The semi-transparent backdrop */
+/* .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(1000px);
+} */
+
+.modal {
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+}
+
+.btn-close {
+    background-color: #ffffff !important;
+    color: red !important;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* 2. The modal container itself (no background, no border) */
+.modal-content {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+/* Remove default header and footer padding/borders */
+.modal-header,
+.modal-footer {
+    border: none;
+    padding: 1rem;
+}
+
+/* 3. The main login form panel */
+.login-form-container {
+    background: transparent;
+    padding: 2rem;
+    text-align: center;
+    max-width: 400px;
+    /* Control the width of the form */
+    margin: auto;
+    position: relative;
+}
+
+/* 4. The "Login to your account" text */
+.login-form-container h2 {
+    color: #fff;
+    font-weight: 300;
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* 5. The input fields with rounded corners */
+.login-form-container .form-control {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    /* Slightly rounded corners */
+    padding: 12px 15px;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.login-form-container .form-control:focus {
+    border-color: #007bff;
+    /* Blue focus color */
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+}
+
+/* 6. The blue "Login" button */
+.btn-login {
+    background-color: #007bff;
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    width: 100%;
+    margin-top: 1rem;
+    transition: background-color 0.2s;
+}
+
+.btn-login:hover {
+    background-color: #0056b3;
+}
+
+/* 7. The "New here? Create an account" link */
+.create-account-link {
+    color: #ccc;
+    font-size: 0.9rem;
+    margin-top: 1.5rem;
+}
+
+.create-account-link a {
+    color: #fff;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+/* 8. The bright blue "Login with KingsChat" button */
+.btn-kingschat-login {
+    background-color: #00bfff;
+    /* Bright cyan/sky blue */
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    width: 100%;
+    margin-top: 2rem;
+    transition: background-color 0.2s;
+}
+
+.btn-kingschat-login:hover {
+    background-color: #009acd;
+}
+
+/* 9. The 'X' close button */
+.modal-header .btn-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: #fff !important;
+    /* Make it white */
+    opacity: 0.8;
+    text-shadow: none;
+    /* Remove Bootstrap's default text shadow */
+    font-size: 1.5rem;
+}
+
+.btn-close:focus {
+    box-shadow: none;
+}
