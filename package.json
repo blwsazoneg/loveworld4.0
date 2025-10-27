@@ -36,7 +36,8 @@
     "jsonwebtoken": "^9.0.2",
     "kingschat-web-sdk": "^0.1.0",
     "multer": "^2.0.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "stripe": "^19.1.0"
   },
   "devDependencies": {
     "browserify": "^17.0.1",

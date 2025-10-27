@@ -1,5 +1,3 @@
-// server.js (FINAL, REGEX-BASED SOLUTION)
-
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,12 +8,20 @@ import kingschatRoutes from './routes/kingschat.routes.js';
 import businessRoutes from './routes/business.routes.js';
 import jobRoutes from './routes/job.routes.js';
 import innovateRoutes from './routes/innovate.routes.js';
+import productRoutes from './routes/product.routes.js';
+import shopContentRoutes from './routes/shop-content.routes.js';
+import cartRoutes from './routes/cart.routes.js';
+import checkoutRoutes from './routes/checkout.routes.js';
+import orderRoutes from './routes/order.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+app.use('/api/checkout', checkoutRoutes);
+
 
 // Middleware
 app.use(express.json());
@@ -26,6 +32,10 @@ app.use('/api/kingschat', kingschatRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/innovate', innovateRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/content', shopContentRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Serve static assets from the 'public' and 'uploads' folders
 app.use(express.static(path.join(__dirname, 'public')));
@@ -48,6 +58,15 @@ app.get(/^\/(?!api).*/, (req, res) => {
 });
 // ---------------------------------
 
+
+// =======================================================
+// NEW 404 NOT FOUND HANDLER
+// This middleware will run if no other route is matched.
+// It MUST be the last middleware added before app.listen().
+// =======================================================
+app.use((req, res, next) => {
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
