@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Shopping Cart</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/shop.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+</head>
+
+<body class="product-page" x-data="cartPage" x-init="if (!$store.auth.loggedIn) { window.location.href = '/shop.html'; }">
+
+    <!-- Shop Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-shop fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand text-white" href="/shop.html">Made in Loveworld</a>
+
+            <!-- Hamburger Menu -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#shopNavContent">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <div class="collapse navbar-collapse" id="shopNavContent">
+                <!-- Main Nav Links (conditionally shown) -->
+                <ul class="navbar-nav mx-auto" x-show="!showSearch" x-transition>
+                    <li class="nav-item"><a class="nav-link" href="#">New Releases</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Best Sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Specials</a></li>
+                    <li class="nav-item"><a class="nav-link highlight" href="#">Food</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">FAQ's</a></li>
+                </ul>
+
+                <!-- Search Input (conditionally shown in the middle) -->
+                <div class="mx-auto" x-show="showSearch" x-transition.opacity>
+                    <!-- On Enter, redirect to the search page -->
+                    <form
+                        @submit.prevent="window.location.href = `/search.html?q=${encodeURIComponent($event.target.elements.query.value)}`">
+                        <input type="text" name="query" class="form-control navbar-search-input"
+                            placeholder="Search products...">
+                    </form>
+                </div>
+
+                <!-- Icons on the Right -->
+                <div class="d-flex align-items-center navbar-right-controls">
+                    <!-- Search Toggle Icon -->
+                    <a href="#" @click.prevent="showSearch = !showSearch">
+                        <i class="bi" :class="showSearch ? 'bi-x-lg' : 'bi-search'"></i>
+                    </a>
+
+                    <!-- Currency Selector Dropdown -->
+                    <!-- <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false" x-text="currentCurrency"></a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
+                            <template x-for="currency in availableCurrencies" :key="currency">
+                                <li><a class="dropdown-item" href="#" @click.prevent="changeCurrency(currency)"
+                                        x-text="currency"></a></li>
+                            </template>
+                        </ul>
+                    </div> -->
+
+                    <!-- Login/User Dropdown -->
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"><i
+                                class="bi bi-person-circle"></i></a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                            <template x-if="!$store.auth.loggedIn">
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                        data-bs-target="#signInUpModal">Sign In / Sign Up</a></li>
+                            </template>
+                            <template x-if="$store.auth.loggedIn">
+                                <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                <li><a class="dropdown-item" href="#">Order History</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+
+                    <!-- NEW CART ICON -->
+                    <a href="/cart.html" class="position-relative">
+                        <i class="bi bi-cart"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                            x-show="$store.cart.itemCount > 0" x-text="$store.cart.itemCount">
+                        </span>
+                    </a>
+
+                </div>
+            </div>
+
+
+        </div>
+    </nav>
+
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
+
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
+                    </div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-5 pt-5">
+        <h1 class="mb-4">Your Shopping Cart</h1>
+
+        <div class="row">
+            <!-- Cart Items Column -->
+            <div class="col-lg-8">
+                <div x-show="$store.cart.items.length === 0" class="text-center p-5 bg-light rounded">
+                    <h4>Your cart is empty.</h4>
+                    <a href="/shop.html" class="btn btn-gold mt-3">Continue Shopping</a>
+                </div>
+
+                <div x-show="$store.cart.items.length > 0">
+                    <template x-for="item in $store.cart.items" :key="item.product_id">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <img :src="item.main_image_url"
+                                        style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px;"
+                                        class="me-3">
+                                    <div class="flex-grow-1">
+                                        <h5 class="mb-1" x-text="item.name"></h5>
+                                        <p class="mb-1 fw-bold" x-text="formatPrice(item.price)"></p>
+                                    </div>
+                                    <div class="quantity-selector mx-4">
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                            @click="updateQuantity(item.product_id, item.quantity - 1)">-</button>
+                                        <input type="number" class="form-control form-control-sm quantity-input"
+                                            :value="item.quantity"
+                                            @change="updateQuantity(item.product_id, $event.target.value)">
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                            @click="updateQuantity(item.product_id, item.quantity + 1)">+</button>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" @click="removeItem(item.product_id)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Summary Column -->
+            <div class="col-lg-4" x-show="$store.cart.items.length > 0">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Order Summary</h5>
+                        <div class="d-flex justify-content-between">
+                            <span>Subtotal</span>
+                            <span x-text="subtotal()"></span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>Total</span>
+                            <span x-text="subtotal()"></span>
+                        </div>
+                        <button class="btn btn-gold w-100 mt-4" @click="proceedToCheckout" :disabled="isCheckingOut">
+                            <span x-show="!isCheckingOut">Proceed to Checkout</span>
+                            <span x-show="isCheckingOut">Redirecting...</span>
+                        </button>
+
+                        <!-- Display any checkout errors -->
+                        <div x-show="checkoutError" class="alert alert-danger mt-3" x-text="checkoutError"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/kingschat.bundle.js"></script>
+    <script src="/js/main.js" type="module"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>

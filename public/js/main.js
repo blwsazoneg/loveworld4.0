@@ -1,5 +1,36 @@
 import { registerUser, loginUser } from './auth.js';
 
+// ================================================================
+// NEW! GLOBAL AXIOS ERROR INTERCEPTOR
+// This code runs on EVERY API response.
+// ================================================================
+axios.interceptors.response.use(
+    // If the response is successful (status 2xx), just pass it through.
+    response => response,
+
+    // If the response has an error...
+    error => {
+        // Check if the error is specifically a 401 Unauthorized or 403 Forbidden
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            // Check if the user THINKS they are logged in.
+            if (Alpine.store('auth').loggedIn) {
+                console.log('Session expired or token invalid. Forcing logout.');
+
+                // 1. Force the user to log out on the frontend.
+                Alpine.store('auth').logout();
+
+                // 2. We need to find the authModal to show a message and open it.
+                // We use a trick with dispatching a custom event.
+                window.dispatchEvent(new CustomEvent('session-expired'));
+            }
+        }
+
+        // Return the error to the original Promise chain so that
+        // individual components can still handle other types of errors.
+        return Promise.reject(error);
+    }
+);
+
 document.addEventListener('alpine:init', () => {
 
     //================================================================
@@ -70,110 +101,91 @@ document.addEventListener('alpine:init', () => {
     //================================================================
     Alpine.data('authModal', () => ({
         showRegisterForm: false,
-        firstName: '', lastName: '', dateOfBirth: '', email: '', phoneNumber: '',
-        username: '', password: '', confirmPassword: '', kingschatHandle: '',
-        zone: '', church: '', ministryPosition: '', yearsInPosition: '',
-        registerMessage: '', registerError: false,
-        loginIdentifier: '', loginPassword: '', loginMessage: '', loginError: false,
-
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        email: '',
+        phoneNumber: '',
+        username: '',
+        password: '',
+        confirmPassword: '',
+        registerMessage: '',
+        registerError: false,
+        loginIdentifier: '',
+        loginPassword: '',
+        loginMessage: '',
+        loginError: false,
         kc_profile_id: null,
         kc_avatar_url: null,
 
+        init() {
+            // Listen for the custom 'session-expired' event from our interceptor
+            window.addEventListener('session-expired', () => {
+                // Set a clear message for the user
+                this.loginMessage = 'Your session has expired. Please log in again.';
+                this.loginError = true; // Use the error styling for the message
+                this.showRegisterForm = false; // Make sure the login form is visible
+
+                // Open the modal
+                const modal = new bootstrap.Modal(this.$el);
+                modal.show();
+            });
+        },
+
         async loginWithKingsChat() {
-            this.loginMessage = 'Connecting to KingsChat...';
-            this.loginError = false;
-
-            // 1. DOUBLE-CHECK THIS CLIENT ID. Is it correct?
-            const loginOptions = {
-                scopes: ["profile"],
-                clientId: 'b2b522e9-d602-402d-b61d-8a50825862da'
-            };
-
+            this.loginMessage = 'Connecting to KingsChat...'; this.loginError = false;
+            const loginOptions = { scopes: ["profile"], clientId: 'b2b522e9-d602-402d-b61d-8a50825862da' };
             try {
-                console.log("Attempting to call KingsChat SDK...");
                 const response = await window.kingsChatWebSdk.login(loginOptions);
-                console.log("SDK call successful, received:", response);
-
                 const { accessToken, refreshToken } = response;
-
-                if (!accessToken) {
-                    // This will now throw a specific error if the token is missing
-                    throw new Error("SDK response did not contain an accessToken.");
-                }
-
-                console.log("Attempting to post tokens to backend...");
+                if (!accessToken) throw new Error("Access Token not found.");
                 const backendResponse = await axios.post('/api/kingschat/login', { accessToken, refreshToken });
-                console.log("Backend call successful, received:", backendResponse.data);
-
                 Alpine.store('auth').handleSuccessfulLogin(backendResponse.data);
-                this.loginMessage = backendResponse.data.message;
-                this.loginError = false;
+                this.loginMessage = backendResponse.data.message; this.loginError = false;
                 const modalInstance = bootstrap.Modal.getInstance(document.getElementById('signInUpModal'));
                 if (modalInstance) modalInstance.hide();
-
             } catch (error) {
-                // THIS IS THE NEW, DETAILED ERROR LOGGING
-                console.error("--- KingsChat Login Flow Failed ---");
-                console.error("The raw error object is:", error);
-
-                if (error.response) {
-                    // This is an error from OUR backend (e.g., 500, 404)
-                    console.error("Error from backend response:", error.response.data);
-                    this.loginMessage = error.response.data.message || 'An error occurred on our server.';
-                } else if (error.request) {
-                    // This is a network error (can't reach the backend)
-                    console.error("Network error, cannot reach the server:", error.request);
-                    this.loginMessage = 'Cannot connect to the server. Please check your connection.';
+                if (error.response && error.response.status === 206) {
+                    const kc_profile = error.response.data.kc_profile;
+                    this.firstName = kc_profile.firstName; this.lastName = kc_profile.lastName;
+                    this.email = kc_profile.email; this.phoneNumber = kc_profile.phoneNumber;
+                    this.kc_profile_id = kc_profile.kingschatId; this.kc_avatar_url = kc_profile.kingschatAvatarUrl;
+                    this.registerMessage = 'Profile found! Please complete your registration.'; this.registerError = false;
+                    this.showRegisterForm = true;
                 } else {
-                    // This is an error from the SDK or a generic JS error
-                    console.error("SDK or JavaScript error:", error.message);
-                    this.loginMessage = 'KingsChat login failed. Please check for popup blockers or try again.';
+                    this.loginMessage = error.response ? error.response.data.message : 'KingsChat login failed.';
+                    this.loginError = true;
                 }
-
-                this.loginError = true;
             }
         },
 
         async handleRegister() {
-            this.registerMessage = ''; this.registerError = false;
             if (this.password !== this.confirmPassword) {
-                this.registerMessage = 'Passwords do not match.';
-                this.registerError = true;
+                this.registerMessage = 'Passwords do not match.'; this.registerError = true;
                 return;
             }
-
             const userData = {
                 firstName: this.firstName, lastName: this.lastName, dateOfBirth: this.dateOfBirth,
-                email: this.email, phoneNumber: this.phoneNumber, username: this.username,
-                password: this.password, kingschatHandle: this.kingschatHandle, zone: this.zone,
-                church: this.church, ministryPosition: this.ministryPosition,
-                yearsInPosition: this.yearsInPosition,
-                kingschat_id: this.kc_profile_id,
-                kingschat_avatar_url: this.kc_avatar_url
+                email: this.email, phoneNumber: this.phoneNumber, username: this.username, password: this.password,
+                kingschat_id: this.kc_profile_id
             };
-
             const result = await registerUser(userData);
             if (result.success) {
-                this.registerMessage = result.data.message + " You can now log in.";
-                this.registerError = false;
+                this.registerMessage = result.data.message + " You can now log in."; this.registerError = false;
                 this.showRegisterForm = false;
             } else {
-                this.registerMessage = result.message;
-                this.registerError = true;
+                this.registerMessage = result.message; this.registerError = true;
             }
         },
 
         async handleLogin() {
-            this.loginMessage = ''; this.loginError = false;
             const result = await Alpine.store('auth').login(this.loginIdentifier, this.loginPassword);
             if (result.success) {
-                this.loginMessage = result.message;
-                this.loginError = false;
+                this.loginMessage = result.message; this.loginError = false;
                 const modalInstance = bootstrap.Modal.getInstance(document.getElementById('signInUpModal'));
                 if (modalInstance) modalInstance.hide();
             } else {
-                this.loginMessage = result.message;
-                this.loginError = true;
+                this.loginMessage = result.message; this.loginError = true;
             }
         }
     }));
@@ -920,8 +932,380 @@ document.addEventListener('alpine:init', () => {
     }));
 
     //================================================================
+    // 14. E-COMMERCE SHOP PAGE COMPONENT (shop.html)
+    //================================================================
+    Alpine.data('shopPage', () => ({
+        slides: [],
+        bestsellers: [], // NEW: A dedicated array for bestsellers
+        sections: [],
+        featuredSectors: [],
+        loading: true,
+        showSearch: false,
+
+        async init() {
+            this.loading = true;
+            try {
+                // THE FIX: Fetch all four data sources in parallel
+                const [slidesRes, bestsellersRes, sectionsRes, featuredSectorsRes] = await Promise.all([
+                    axios.get('/api/content/hero-slides'),
+                    axios.get('/api/content/weekly-bestsellers'),
+                    axios.get('/api/content/shop-sections'),
+                    axios.get('/api/content/featured-sectors')
+                ]);
+
+                // Store ALL the data correctly
+                this.slides = slidesRes.data;
+                this.bestsellers = bestsellersRes.data;
+                this.sections = sectionsRes.data;
+                this.featuredSectors = featuredSectorsRes.data;
+
+            } catch (error) {
+                console.error("Failed to load shop content:", error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // A single function to fetch all necessary data
+        async fetchPageContent() {
+            this.loading = true;
+
+            // Use Promise.all to fetch everything in parallel for speed
+            try {
+                const [slidesRes, bestsellersRes, sectionsRes] = await Promise.all([
+                    axios.get('/api/content/hero-slides'),
+                    axios.get('/api/content/weekly-bestsellers'),
+                    axios.get('/api/content/shop-sections')
+                ]);
+
+                this.slides = slidesRes.data;
+                this.bestsellers = bestsellersRes.data;
+                this.sections = sectionsRes.data;
+
+            } catch (error) {
+                console.error("Failed to load shop content:", error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // This function can be simplified as it's not used in this component directly anymore
+        formatPrice(priceInUSD) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+            }).format(priceInUSD);
+        },
+
+        scrollCarousel(element, distance) {
+            element.scrollBy({ left: distance, behavior: 'smooth' });
+        }
+    }));
+
+    //================================================================
+    // 15. PRODUCT DETAIL PAGE COMPONENT (product-detail.html)
+    //================================================================
+    Alpine.data('productDetailPage', () => ({
+        product: {}, productId: null, activeImageUrl: '', quantity: 1, loading: true,
+        error: '', cartMessage: '', cartError: false,
+        init() {
+            const params = new URLSearchParams(window.location.search); this.productId = params.get('id');
+            if (this.productId) this.fetchProductDetails(); else { this.error = 'No product ID specified.'; this.loading = false; }
+        },
+        formatPrice(priceInUSD) {
+            if (!priceInUSD) return ''; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceInUSD);
+        },
+        async fetchProductDetails() {
+            this.loading = true; this.error = '';
+            try {
+                const response = await axios.get(`/api/products/${this.productId}`); this.product = response.data;
+                if (this.product.images?.length > 0) this.activeImageUrl = this.product.images[0].image_url;
+            } catch (err) { this.error = 'Failed to load product details.'; console.error('Fetch product error:', err); } finally { this.loading = false; }
+        },
+        async addToCart() {
+            this.cartMessage = 'Adding...'; this.cartError = false;
+            const result = await Alpine.store('cart').addItem(this.productId, this.quantity);
+            this.cartMessage = result.message; this.cartError = !result.success;
+            setTimeout(() => { this.cartMessage = ''; }, 3000);
+        }
+    }));
+
+    //================================================================
+    // 16. GLOBAL CART STORE
+    //================================================================
+    Alpine.store('cart', {
+        items: [],
+        itemCount: 0,
+
+        async initialize() {
+            if (Alpine.store('auth').loggedIn) {
+                try {
+                    const token = Alpine.store('auth').token;
+                    const response = await axios.get('/api/cart', { headers: { 'Authorization': `Bearer ${token}` } });
+                    this.items = response.data;
+                    this.updateItemCount();
+                } catch (error) { console.error('Failed to initialize cart:', error); }
+            }
+        },
+
+        async addItem(productId, quantity) {
+            if (!Alpine.store('auth').loggedIn) {
+                new bootstrap.Modal(document.getElementById('signInUpModal')).show();
+                return { success: false, message: 'Please log in to add items to your cart.' };
+            }
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.post('/api/cart/items', { productId, quantity }, { headers: { 'Authorization': `Bearer ${token}` } });
+                await this.initialize();
+                return { success: true, message: 'Item added to cart!' };
+            } catch (error) {
+                console.error('Failed to add item to cart:', error);
+                return { success: false, message: 'Could not add item to cart.' };
+            }
+        },
+
+        async updateItem(productId, quantity) {
+            if (quantity < 1) return this.removeItem(productId);
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.put(`/api/cart/items/${productId}`, { quantity }, { headers: { 'Authorization': `Bearer ${token}` } });
+                await this.initialize();
+            } catch (error) { console.error('Failed to update item:', error); }
+        },
+
+        async removeItem(productId) {
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/cart/items/${productId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                await this.initialize();
+            } catch (error) { console.error('Failed to remove item:', error); }
+        },
+
+        updateItemCount() {
+            this.itemCount = this.items.reduce((total, item) => total + item.quantity, 0);
+        }
+    });
+
+
+    // ===============================================================
+    // 17. CART PAGE COMPONENT
+    // ===============================================================
+    Alpine.data('cartPage', () => ({
+        checkoutError: '', isCheckingOut: false, debounce: null,
+        formatPrice(priceInUSD) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceInUSD); },
+        subtotal() {
+            const totalInUSD = Alpine.store('cart').items.reduce((total, item) => total + (item.price * item.quantity), 0);
+            return this.formatPrice(totalInUSD);
+        },
+        updateQuantity(productId, quantity) {
+            clearTimeout(this.debounce);
+            this.debounce = setTimeout(() => { Alpine.store('cart').updateItem(productId, parseInt(quantity)); }, 500);
+        },
+        removeItem(productId) { if (confirm('Remove this item?')) Alpine.store('cart').removeItem(productId); },
+        async proceedToCheckout() {
+            this.isCheckingOut = true; this.checkoutError = '';
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.post('/api/checkout/create-session', {}, { headers: { 'Authorization': `Bearer ${token}` } });
+                window.location.href = response.data.url;
+            } catch (error) {
+                this.checkoutError = error.response ? error.response.data.message : 'Checkout failed.';
+                this.isCheckingOut = false;
+            }
+        }
+    }));
+
+    // ===============================================================
+    // 18. Sector Page
+    // ===============================================================
+    Alpine.data('sectorPage', () => ({
+        sector: {}, // Holds info like name and hero_image_url
+
+        // Create separate arrays for each section's data
+        bestsellers: [],
+        newArrivals: [],
+
+        // Data specifically for the Food & Beverage layout
+        familyFeasts: [],
+        fruitsAndVeg: [],
+
+
+        otherProducts: [], // For the 'Order Now' carousel
+
+        showSearch: false,
+
+        loading: true,
+        error: '',
+
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            const sectorName = params.get('name');
+            if (sectorName) {
+                this.fetchSectorData(sectorName);
+            } else {
+                this.error = 'No sector specified.';
+                this.loading = false;
+            }
+        },
+
+        async fetchSectorData(sectorName) {
+            this.loading = true;
+            this.error = '';
+            try {
+                // Step 1: Always get the main sector details first
+                const sectorRes = await axios.get(`/api/products/sector/${sectorName}`);
+                this.sector = sectorRes.data.sector;
+                const sectorId = this.sector.id;
+
+                // Step 2: CONDITIONAL DATA FETCHING
+                if (sectorName === 'Food & Beverage') {
+                    // --- Food & Beverage Layout ---
+                    const [feastsRes, fruitsRes] = await Promise.all([
+                        axios.get(`/api/products/sector/${sectorId}/family-feasts`),
+                        axios.get(`/api/products/sector/${sectorId}/fruits-vegetables`)
+                    ]);
+                    this.familyFeasts = feastsRes.data;
+                    this.fruitsAndVeg = fruitsRes.data;
+                } else {
+                    // --- Default Layout ---
+                    const [bestsellersRes, newArrivalsRes] = await Promise.all([
+                        axios.get(`/api/products/sector/${sectorId}/bestsellers`),
+                        axios.get(`/api/products/sector/${sectorId}/new-arrivals`)
+                    ]);
+                    this.bestsellers = bestsellersRes.data;
+                    this.newArrivals = newArrivalsRes.data;
+                }
+
+                // The 'Order Now' data can be the generic product list for now
+                this.otherProducts = sectorRes.data.products;
+
+            } catch (err) {
+                console.error('Error loading sector page data:', err);
+                this.error = 'Could not load this sector\'s content.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        formatPrice(priceInUSD) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+            }).format(priceInUSD);
+        },
+
+        scrollCarousel(element, distance) {
+            if (element) {
+                element.scrollBy({ left: distance, behavior: 'smooth' });
+            }
+        },
+
+        toggleSearch() {
+            this.showSearch = !this.showSearch;
+        }
+
+    }));
+
+    // public/js/main.js
+    Alpine.data('searchPage', () => ({
+        products: [],
+        searchTerm: '',
+        loading: true,
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            this.searchTerm = params.get('q');
+            if (this.searchTerm) this.fetchResults();
+            else this.loading = false;
+        },
+        async fetchResults() {
+            this.loading = true;
+            try {
+                const response = await axios.get(`/api/products?q=${this.searchTerm}`);
+                this.products = response.data;
+            } catch (err) { console.error(err); }
+            finally { this.loading = false; }
+        },
+        formatPrice(priceInUSD) {
+            if (!priceInUSD) return '';
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency', currency: 'USD'
+            }).format(priceInUSD);
+        },
+    }));
+
+    //================================================================
+    // 19. ORDER HISTORY PAGE COMPONENT
+    //================================================================
+    Alpine.data('orderHistoryPage', () => ({
+        orders: [],
+        loading: true,
+        error: '',
+
+        init() {
+            // Watch for login/logout to fetch orders automatically
+            this.$watch('$store.auth.loggedIn', (isLoggedIn) => {
+                if (isLoggedIn) {
+                    this.fetchOrders();
+                } else {
+                    this.orders = []; // Clear orders on logout
+                }
+            });
+
+            if (Alpine.store('auth').loggedIn) {
+                this.fetchOrders();
+            } else {
+                this.loading = false;
+            }
+
+            // Add event listener for when an accordion item is shown
+            const accordion = this.$root.querySelector('#orderAccordion');
+            if (accordion) {
+                accordion.addEventListener('show.bs.collapse', event => {
+                    const orderId = event.target.id.split('-')[1];
+                    this.fetchOrderDetails(orderId);
+                });
+            }
+        },
+
+        async fetchOrders() {
+            this.loading = true; this.error = '';
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.get('/api/orders/my-orders', { headers: { 'Authorization': `Bearer ${token}` } });
+                this.orders = response.data.map(order => ({ ...order, items: null, itemsLoading: false }));
+            } catch (err) {
+                this.error = 'Failed to load order history.';
+                console.error(err);
+            } finally { this.loading = false; }
+        },
+
+        async fetchOrderDetails(orderId) {
+            const orderIndex = this.orders.findIndex(o => o.id == orderId);
+            if (orderIndex === -1 || this.orders[orderIndex].items) return; // Already loaded
+
+            this.orders[orderIndex].itemsLoading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.get(`/api/orders/${orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.orders[orderIndex].items = response.data.items;
+            } catch (err) {
+                console.error('Failed to load order details:', err);
+            } finally {
+                this.orders[orderIndex].itemsLoading = false;
+            }
+        },
+
+        formatPrice(priceInUSD) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceInUSD);
+        }
+    }));
+
+
+
+    //================================================================
     // Initialize the auth store when the app loads
     //================================================================
     Alpine.store('auth').initialize();
+    Alpine.store('cart').initialize();
 });
 

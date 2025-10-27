@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" x-data>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Made in Loveworld</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/global.css"> <!-- For variables -->
+    <link rel="stylesheet" href="/css/shop.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+
+</head>
+
+<body class="shop-page" x-data="shopPage">
+
+    <!-- Shop Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-shop fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand text-white" href="/shop.html">Made in Loveworld</a>
+
+            <!-- Hamburger Menu -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#shopNavContent">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <div class="collapse navbar-collapse" id="shopNavContent">
+                <!-- Main Nav Links (conditionally shown) -->
+                <ul class="navbar-nav mx-auto" x-show="!showSearch" x-transition>
+                    <li class="nav-item"><a class="nav-link" href="/new-releases.html">New Releases</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/best-sellers.html">Best Sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/specials.html">Specials</a></li>
+                    <li class="nav-item"><a class="nav-link highlight"
+                            href="/sector.html?name=Food%20%26%20Beverage">Food</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/faqs.html">FAQ's</a></li>
+                </ul>
+
+                <!-- Search Input (conditionally shown in the middle) -->
+                <div class="mx-auto" x-show="showSearch" x-transition.opacity>
+                    <!-- On Enter, redirect to the search page -->
+                    <form
+                        @submit.prevent="window.location.href = `/search.html?q=${encodeURIComponent($event.target.elements.query.value)}`">
+                        <input type="text" name="query" class="form-control navbar-search-input"
+                            placeholder="Search products...">
+                    </form>
+                </div>
+
+                <!-- Icons on the Right -->
+                <div class="d-flex align-items-center navbar-right-controls">
+                    <!-- Search Toggle Icon -->
+                    <a href="#" @click.prevent="showSearch = !showSearch">
+                        <i class="bi" :class="showSearch ? 'bi-x-lg' : 'bi-search'"></i>
+                    </a>
+
+                    <!-- Currency Selector Dropdown -->
+                    <!-- <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false" x-text="currentCurrency"></a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
+                            <template x-for="currency in availableCurrencies" :key="currency">
+                                <li><a class="dropdown-item" href="#" @click.prevent="changeCurrency(currency)"
+                                        x-text="currency"></a></li>
+                            </template>
+                        </ul>
+                    </div> -->
+
+                    <!-- Login/User Dropdown -->
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"><i
+                                class="bi bi-person-circle"></i></a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-lg-end ms-4">
+                            <template x-if="!$store.auth.loggedIn">
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                        data-bs-target="#signInUpModal">Sign In / Sign Up</a>
+                                </li>
+                                <li><a class="dropdown-item" href="/order-history.html">Order History</a></li>
+                            </template>
+                            <template x-if="$store.auth.loggedIn">
+                                <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                <li><a class="dropdown-item" href="#">Order History</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+
+                    <!-- NEW CART ICON -->
+                    <a href="/cart.html" class="position-relative">
+                        <i class="bi bi-cart"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                            x-show="$store.cart.itemCount > 0" x-text="$store.cart.itemCount">
+                        </span>
+                    </a>
+
+                </div>
+            </div>
+
+
+        </div>
+    </nav>
+
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
+
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
+                    </div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Hero Section -->
+    <section class="hero-banner-container">
+        <!-- Using Bootstrap Carousel -->
+        <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                <!-- Loop through each slide from our API -->
+                <template x-for="(slide, index) in slides" :key="slide.id">
+                    <div class="carousel-item" :class="{ 'active': index === 0 }">
+                        <!-- The main banner with dynamic background -->
+                        <div class="hero-banner"
+                            :style="`background-image: url(${slide.background_image_url}); background-color: #002366;`">
+
+                            <!-- The text content -->
+                            <div class="hero-content-wrapper">
+                                <div class="container">
+                                    <div class="row align-items-center">
+                                        <div class="hero-text-content col-md-5">
+                                            <h1 class="hero-title" x-text="slide.title_text"></h1>
+                                            <p class="hero-subtitle" x-text="slide.subtitle_text"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- The dynamic image collage -->
+                            <div class="hero-image-collage d-none d-md-block">
+                                <!-- Loop through the collage images for THIS slide -->
+                                <template x-for="img in slide.collage_images" :key="img.id">
+                                    <div class="collage-img"
+                                        :style="`top: ${img.top_position}; left: ${img.left_position}; width: ${img.width}; height: ${img.height}; z-index: ${img.z_index};`">
+                                        <img :src="img.image_url" alt="Collage Image">
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Carousel Controls (Optional but recommended) -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+    </section>
+
+    <main class="multi-section-container">
+        <!-- <div class="container"> -->
+        <div x-show="loading" class="text-center py-5">
+            <div class="spinner-border text-dark" role="status"></div>
+        </div>
+
+        <div x-show="!loading && (bestsellers.length > 0 || sections.length > 0)">
+            <!-- The main row that holds our three columns -->
+            <div class="row product-columns-container mx-0">
+
+                <!-- Column 1: AUTOMATIC Weekly Bestsellers -->
+                <div class="col-lg-4 col-md-12 product-column">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title">Weekly Bestsellers</div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in bestsellers" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Column 2 (First admin-controlled section) -->
+                <div class="col-lg-4 col-md-12 product-column has-border">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[0]?.title || 'Featured'"></div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Column 3 (Second admin-controlled section) -->
+                <div class="col-lg-4 col-md-12 product-column">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[1]?.title || 'New Arrivals'"></div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dark Carousels (for any sections beyond the first two admin-controlled ones) -->
+        <!-- <template x-for="section in sections.slice(2)" :key="section.id">
+            <section class="dark-carousel-section">
+                <div class="section-header">
+                    <h3 class="section-title" x-text="section.title"></h3>
+                    <div class="carousel-nav d-none d-lg-block">
+                        <a href="#"
+                            @click.prevent="scrollCarousel($event.target.closest('section').querySelector('.horizontal-scroll-container'), -300)"
+                            class="me-2">&larr;</a>
+                        <a href="#"
+                            @click.prevent="scrollCarousel($event.target.closest('section').querySelector('.horizontal-scroll-container'), 300)">&rarr;</a>
+                    </div>
+                </div>
+                <div class="horizontal-scroll-container">
+                    <template x-for="product in section.products" :key="product.id">
+                        <a :href="`/product-detail.html?id=${product.id}`" class="product-cell">
+                            <div class="image-wrapper">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product Image">
+                            </div>
+                            <h5 class="product-name" x-text="product.name"></h5>
+                        </a>
+                    </template>
+                </div>
+            </section>
+        </template> -->
+
+        <section class="dark-carousel-section">
+            <div class="section-header">
+                <h3 class="section-title">Shop</h3>
+                <!-- <div class="carousel-nav d-none d-lg-block">
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel1, -300)" class="me-2">&larr;</a>
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel1, 300)">&rarr;</a>
+                </div> -->
+            </div>
+            <div class="horizontal-scroll-container" x-ref="carousel1">
+                <template x-for="sector in featuredSectors.slice(0, 5)" :key="sector.id">
+                    <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
+                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <h5 class="product-name" x-text="sector.name"></h5>
+                    </a>
+                </template>
+            </div>
+            <div class="section-header">
+                <div class="carousel-nav d-none d-lg-block">
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel1, -300)" class="me-2">&larr;</a>
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel1, 300)">&rarr;</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Carousel 2 -->
+        <section class="dark-carousel-section">
+            <div class="horizontal-scroll-container" x-ref="carousel2">
+                <template x-for="sector in featuredSectors.slice(5, 10)" :key="sector.id">
+                    <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
+                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <h5 class="product-name" x-text="sector.name"></h5>
+                    </a>
+                </template>
+            </div>
+            <div class="section-header">
+                <div class="carousel-nav d-none d-lg-block">
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel2, -300)" class="me-2">&larr;</a>
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel2, 300)">&rarr;</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Carousel 3 -->
+        <section class="dark-carousel-section">
+            <div class="horizontal-scroll-container" x-ref="carousel3">
+                <template x-for="sector in featuredSectors.slice(10, 15)" :key="sector.id">
+                    <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
+                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <h5 class="product-name" x-text="sector.name"></h5>
+                    </a>
+                </template>
+            </div>
+            <div class="section-header">
+                <div class="carousel-nav d-none d-lg-block">
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel3, -300)" class="me-2">&larr;</a>
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel3, 300)">&rarr;</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Carousel 4 -->
+        <section class="dark-carousel-section">
+            <div class="horizontal-scroll-container" x-ref="carousel4">
+                <template x-for="sector in featuredSectors.slice(15, 20)" :key="sector.id">
+                    <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
+                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <h5 class="product-name" x-text="sector.name"></h5>
+                    </a>
+                </template>
+            </div>
+            <div class="section-header">
+                <div class="carousel-nav d-none d-lg-block">
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel4, -300)" class="me-2">&larr;</a>
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel4, 300)">&rarr;</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Carousel 5 -->
+        <section class="dark-carousel-section">
+            <div class="horizontal-scroll-container" x-ref="carousel5">
+                <template x-for="sector in featuredSectors.slice(20, 25)" :key="sector.id">
+                    <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
+                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <h5 class="product-name" x-text="sector.name"></h5>
+                    </a>
+                </template>
+            </div>
+            <div class="section-header">
+                <!-- <h3 class="section-title"></h3> -->
+                <div class="carousel-nav d-none d-lg-block">
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel5, -300)" class="me-2">&larr;</a>
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel5, 300)">&rarr;</a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/kingschat.bundle.js"></script>
+    <script src="/js/main.js" type="module"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>

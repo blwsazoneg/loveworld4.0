@@ -1,0 +1,550 @@
+/* public/css/shop.css */
+body.shop-page {
+    background-color: #f0f2f5;
+    color: #000;
+    /* padding-top: 60px; */
+}
+
+/* 1. The Main Navbar Bar */
+.navbar-shop {
+    background-color: rgba(10, 10, 10, 0.9);
+    /* Semi-transparent dark/black */
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 1rem;
+    font-family: sans-serif;
+    /* border-bottom: none !important; */
+}
+
+/* 2. The Hamburger Menu Icon (Toggler) */
+.navbar-shop .navbar-toggler {
+    border: none;
+    padding: 0;
+    font-size: 1.8rem;
+    color: #fff !important;
+}
+
+.navbar-shop .navbar-toggler:focus {
+    box-shadow: none;
+}
+
+.navbar-shop .navbar-toggler-icon {
+    /* Use a custom SVG to create the clean 3-line icon */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+.navbar-shop .navbar-toggler-icon:hover {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+
+/* 3. The Brand/Logo */
+
+
+@media (max-width: 991.98px) {
+    .navbar-shop .navbar-brand {
+        position: static;
+        /* Un-center on mobile */
+        transform: none;
+        margin-left: 1rem;
+    }
+}
+
+
+/* 4. The Navigation Links */
+.navbar-shop .nav-link {
+    color: #e0e0e0;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    transition: all 0.2s;
+}
+
+.navbar-shop .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 5. The Special Red Highlight Link */
+.navbar-shop .nav-link.highlight {
+    background-color: #8B0000;
+    color: #fff;
+}
+
+.navbar-shop .nav-link.highlight:hover {
+    background-color: #a00000;
+}
+
+/* 6. The Right-Side Icons (Search, Currency, etc.) */
+.navbar-shop .navbar-right-controls {
+    gap: 1rem;
+}
+
+.navbar-shop .navbar-right-controls a {
+    color: #e0e0e0;
+    font-size: 1.2rem;
+    text-decoration: none;
+}
+
+.navbar-shop .navbar-right-controls a:hover {
+    color: #fff;
+}
+
+/* Ensure the dropdown menu is dark */
+.navbar-shop .dropdown-menu {
+    background-color: #212529;
+}
+
+.navbar-shop .dropdown-item {
+    color: #e0e0e0;
+}
+
+.navbar-shop .dropdown-item:hover {
+    background-color: #343a40;
+    color: #fff;
+}
+
+
+/* 7. The Search Input Field */
+.navbar-search-input {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid #555;
+    border-radius: 50px;
+    color: #fff;
+    width: 300px;
+}
+
+.navbar-search-input::placeholder {
+    color: #aaa;
+}
+
+.navbar-search-input:focus {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: var(--gold);
+    color: #fff;
+    box-shadow: none;
+}
+
+/* 2. The Hero Section (Blue Banner) */
+
+.hero-banner-container .hero-banner {
+    height: 50vh !important;
+}
+
+.hero-banner-container .carousel-control-prev,
+.hero-banner-container .carousel-control-next {
+    width: 2rem;
+    height: 3rem;
+    /* padding: 1.5rem; */
+    top: 50%;
+    transform: translateY(-50%);
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+.hero-banner .hero-content {
+    position: relative;
+    z-index: 5;
+}
+
+.hero-banner .hero-title {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: bold;
+}
+
+.hero-banner .hero-subtitle {
+    font-size: 1.2rem;
+    font-weight: 300;
+}
+
+/* The image collage will be handled by positioning images absolutely */
+.hero-image-collage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Individual images in the collage */
+.collage-img {
+    position: absolute;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.collage-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 1. The Dark Grey Tab Bar */
+.section-tabs-bar {
+    background-color: #343a40;
+    color: #fff;
+    text-align: center;
+}
+
+.section-tabs-bar .tab-title {
+    padding: 0.75rem 1rem;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* 2. The Main Content Area */
+.product-columns-container {
+    background-color: #fff;
+    padding: 1.5rem;
+}
+
+/* Special styling for the middle column's border */
+.product-column.has-border {
+    border-left: 8px solid var(--dark-gold);
+    border-right: 8px solid var(--dark-gold);
+}
+
+/* On smaller screens, switch border to top/bottom */
+@media (max-width: 991.98px) {
+    .product-column.has-border {
+        border-left: none;
+        border-right: none;
+        /* border-top: 8px solid var(--dark-gold);
+        border-bottom: 8px solid var(--dark-gold); */
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+    }
+}
+
+/* 3. The 2x2 grid of products inside each column */
+.inner-product-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.product-image-item {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: #e9ecef;
+    transition: transform 0.2s;
+}
+
+.product-image-item:hover {
+    transform: scale(1.05);
+}
+
+.product-image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hero-content-wrapper {
+    position: relative;
+    z-index: 5;
+    height: 100%;
+    padding: 0 80px;
+}
+
+/* This contains the text and ensures it is white */
+.hero-text-content {
+    color: #fff;
+}
+
+/* Make sure the title and subtitle inherit the white color */
+.hero-banner .hero-title,
+.hero-banner .hero-subtitle {
+    color: #fff;
+}
+
+.dark-carousel-section {
+    background: linear-gradient(to right, #1c1404 0%, #b8860b 100%);
+    /* Black to dark gold gradient */
+    padding: 2rem 0;
+    /* border-top: 1px solid #f0f2f5; */
+}
+
+.dark-carousel-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 5%;
+    margin-bottom: 2rem;
+}
+
+.dark-carousel-section .section-title {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.dark-carousel-section .carousel-nav {
+    display: flex;
+    align-items: center;
+    margin: auto;
+}
+
+/* Navigation Arrows for the Carousel */
+.dark-carousel-section .carousel-nav a {
+    color: #000;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.dark-carousel-section .carousel-nav a:hover {
+    color: #000;
+    background-color: var(--gold);
+}
+
+/* This is the container that will scroll horizontally */
+.horizontal-scroll-container {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 1rem 5%;
+    /* This creates a smooth scrolling effect on touch devices */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    /* Hide the ugly scrollbar */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.horizontal-scroll-container::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari */
+}
+
+/* Individual product cell in the horizontal scroll */
+.product-cell {
+    flex: 0 0 auto;
+    /* Prevents shrinking/growing */
+    width: 280px;
+    margin-right: 1.5rem;
+    text-decoration: none;
+}
+
+.product-cell .image-wrapper {
+    width: 100%;
+    height: 280px;
+    border-radius: 25px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    transition: transform 0.3s;
+}
+
+.product-cell:hover .image-wrapper {
+    transform: scale(1.03);
+}
+
+.product-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-cell .product-name {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #fff;
+    text-align: center !important;
+    /* White text for the dark background */
+}
+
+/* SECTOR PAGE */
+
+/* --- STYLES FOR THE SECTOR PAGE HERO --- */
+.sector-hero {
+    height: 50vh;
+    /* 50% of the viewport height */
+    min-height: 400px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #fff;
+    background-size: cover;
+    background-position: center;
+}
+
+.sector-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Dark semi-transparent overlay */
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
+}
+
+.sector-hero .hero-content {
+    position: relative;
+    /* Sits on top of the overlay */
+    z-index: 2;
+}
+
+.sector-hero .hero-title {
+    font-size: 4rem;
+    font-weight: bold;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.sector-content-section {
+    /* padding: 3rem 0; */
+}
+
+/* Base styles for each of the three columns */
+.sector-column {
+    padding: 1.5rem;
+    /* border-radius: 25px; */
+    margin-bottom: 2rem;
+    /* Add margin for mobile stacking */
+}
+
+.sector-column h4 {
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+}
+
+/* White background for the first two columns */
+.sector-column.bg-white {
+    background-color: #fff;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Special gold background for the 'Order Now' column */
+.sector-column.bg-gold-gradient {
+    background: linear-gradient(to bottom, #b8860b, #b8860b);
+    /* Gold gradient */
+    color: #000;
+}
+
+.sector-column.bg-gold-gradient h4 {
+    color: #fff;
+}
+
+
+/* --- Grid styles for 'Bestsellers' and 'New Arrivals' --- */
+.vertical-product-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    /* Always 2 items per row */
+    gap: 1rem;
+}
+
+.vertical-product-grid .product-image-item {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: #e9ecef;
+    transition: transform 0.2s;
+}
+
+.vertical-product-grid .product-image-item:hover {
+    transform: scale(1.05);
+}
+
+.vertical-product-grid .product-image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+
+/* --- Carousel styles for 'Order Now' --- */
+.horizontal-scroll-container {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    scroll-behavior: smooth;
+    /* Hide scrollbar */
+    scrollbar-width: none;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar {
+    display: none;
+}
+
+.horizontal-scroll-container .product-image-item {
+    flex: 0 0 150px;
+    /* Smaller, fixed width for carousel items */
+    height: 150px;
+    margin-right: 1rem;
+}
+
+.search-results-container {
+    padding: 2rem 0;
+}
+
+.search-product-card {
+    background-color: #fff;
+    border-radius: 15px;
+    border: 1px solid #e0e0e0;
+    text-decoration: none;
+    color: #333;
+    overflow: hidden;
+    height: 100%;
+    /* Ensure all cards in a row have the same height */
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease-in-out;
+}
+
+.search-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.search-product-card .card-img-top {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    /* Give a consistent aspect ratio */
+    object-fit: cover;
+}
+
+.search-product-card .card-body {
+    flex-grow: 1;
+    /* Allow body to grow to fill space */
+    display: flex;
+    flex-direction: column;
+}
+
+.search-product-card .product-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex-grow: 1;
+    /* Pushes the price and seller down */
+}
+
+.search-product-card .product-seller {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.search-product-card .product-price {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--gold);
+}

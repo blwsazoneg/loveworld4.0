@@ -19,11 +19,10 @@
 
 </head>
 
-<body x-init="
-    if (!$store.auth.loggedIn) {
-        window.location.href = '/information.html';
-    }
-">
+<!-- Add x-init to the body tag -->
+
+<body x-data="profilePage" x-init="if (!$store.auth.loggedIn) { window.location.href = '/information.html'; }">
+
     <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
         <div class="container-fluid">
             <a class="navbar-brand text-gold" href="/">
@@ -157,178 +156,194 @@
         </div>
     </div>
 
-    <div class="container my-5 py-5" x-data="profilePage">
-        <div class="row">
-            <div class="col-lg-8 offset-lg-2">
-                <h1 class="mb-4">My Profile</h1>
+    <div class="container my-5 py-5">
+        <div x-show="!$store.auth.loggedIn" x-transition class="text-center p-5 bg-light rounded">
+            <h3>Access Denied</h3>
+            <p class="lead text-muted">You must be logged in to view your profile.</p>
+            <button class="btn btn-gold mt-3" data-bs-toggle="modal" data-bs-target="#signInUpModal">
+                Login or Sign Up
+            </button>
+        </div>
 
-                <!-- KingsChat Linking Section -->
-                <div class="card mb-4">
-                    <div class="card-body text-center">
-                        <template x-if="user.kingschatId">
-                            <div class="p-3">
-                                <h5 class="text-success">✓ KingsChat Account Linked</h5>
-                                <img :src="user.kingschatAvatarUrl" class="rounded-circle my-3" width="100" height="100"
-                                    alt="KC Avatar" x-show="user.kingschatAvatarUrl">
-                                <p class="mb-0"><strong>KC Username:</strong> <span
-                                        x-text="user.kingschatHandle"></span></p>
-                            </div>
-                        </template>
-                        <template x-if="!user.kingschatId">
-                            <div class="p-3">
-                                <h5>Link your KingsChat Account</h5>
-                                <p>Fetch your profile information and enable KingsChat features.</p>
-                                <div class="d-flex justify-content-center">
-                                    <a class="kc-web-sdk-btn" @click.prevent="linkWithKingsChat()"></a>
+        <div x-show="$store.auth.loggedIn" x-transition>
+            <div class="row">
+                <div class="col-lg-8 offset-lg-2">
+                    <h1 class="mb-4">My Profile</h1>
+
+                    <!-- KingsChat Linking Section -->
+                    <div class="card mb-4">
+                        <div class="card-body text-center">
+                            <template x-if="user.kingschatId">
+                                <div class="p-3">
+                                    <h5 class="text-success">✓ KingsChat Account Linked</h5>
+                                    <img :src="user.kingschatAvatarUrl" class="rounded-circle my-3" width="100"
+                                        height="100" alt="KC Avatar" x-show="user.kingschatAvatarUrl">
+                                    <p class="mb-0"><strong>KC Username:</strong> <span
+                                            x-text="user.kingschatHandle"></span></p>
                                 </div>
-                                <div x-show="kcMessage" class="alert mt-3"
-                                    :class="kcError ? 'alert-danger' : 'alert-success'" x-text="kcMessage"></div>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- VIEW MODE -->
-                <div class="card" x-show="!isEditing" x-transition>
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Profile Details</span>
-                        <button class="btn btn-sm btn-outline-primary" @click="startEditing()">Edit Profile</button>
-                    </div>
-                    <div class="card-body">
-                        <template x-if="user">
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item"><strong>Full Name:</strong> <span
-                                        x-text="`${user.firstName || ''} ${user.lastName || ''}`.trim()"></span></li>
-                                <li class="list-group-item"><strong>Username:</strong> <span
-                                        x-text="user.username || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Email:</strong> <span
-                                        x-text="user.email || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Phone:</strong> <span
-                                        x-text="user.phoneNumber || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Date of Birth:</strong> <span
-                                        x-text="user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : 'Not Provided'"></span>
-                                </li>
-                                <hr>
-                                <li class="list-group-item"><strong>Zone:</strong> <span
-                                        x-text="user.zone || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Group:</strong> <span
-                                        x-text="user.group || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Church:</strong> <span
-                                        x-text="user.church || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Leadership Role:</strong> <span
-                                        x-text="user.leadership_role || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Ministry Staff:</strong> <span
-                                        x-text="user.ministry_staff ? 'Yes' : (user.ministry_staff === false ? 'No' : 'Not Provided')"></span>
-                                </li>
-                                <li class="list-group-item"><strong>Ministry Department:</strong> <span
-                                        x-text="user.ministry_department || 'Not Provided'"></span></li>
-                                <hr>
-                                <li class="list-group-item"><strong>Educational Qualification:</strong> <span
-                                        x-text="user.educational_qualification || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Institution of Completion:</strong> <span
-                                        x-text="user.institution_of_completion || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Professional Qualification:</strong> <span
-                                        x-text="user.professional_qualification || 'Not Provided'"></span></li>
-                                <hr>
-                                <li class="list-group-item"><strong>Has Work Experience:</strong> <span
-                                        x-text="user.has_work_experience ? 'Yes' : (user.has_work_experience === false ? 'No' : 'Not Provided')"></span>
-                                </li>
-                                <li class="list-group-item"><strong>Organisation of Employment:</strong> <span
-                                        x-text="user.organisation_of_employment || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Duration of Employment:</strong> <span
-                                        x-text="user.duration_of_employment || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Significant Achievements:</strong>
-                                    <p style="white-space: pre-wrap;" class="mb-0"
-                                        x-text="user.significant_achievements || 'Not Provided'"></p>
-                                </li>
-                                <hr>
-                                <li class="list-group-item"><strong>Areas of Interest:</strong> <span
-                                        x-text="user.areas_of_interest?.join(', ') || 'Not Provided'"></span></li>
-                                <li class="list-group-item"><strong>Apply For:</strong> <span
-                                        x-text="user.apply_for || 'Not Provided'"></span></li>
-                            </ul>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- EDIT MODE -->
-                <div class="card" x-show="isEditing" x-transition style="display: none;">
-                    <div class="card-header"><span>Edit Profile Details</span></div>
-                    <div class="card-body">
-                        <form @submit.prevent="saveProfile">
-                            <div class="row mb-3">
-                                <div class="col"><label class="form-label">First Name</label><input type="text"
-                                        class="form-control" x-model="formData.firstName"></div>
-                                <div class="col"><label class="form-label">Last Name</label><input type="text"
-                                        class="form-control" x-model="formData.lastName"></div>
-                            </div>
-                            <div class="mb-3"><label class="form-label">Zone</label><input type="text"
-                                    class="form-control" x-model="formData.zone"></div>
-                            <div class="mb-3"><label class="form-label">Group</label><input type="text"
-                                    class="form-control" x-model="formData.group"></div>
-                            <div class="mb-3"><label class="form-label">Church</label><input type="text"
-                                    class="form-control" x-model="formData.church"></div>
-                            <div class="mb-3"><label class="form-label">Leadership Role</label><input type="text"
-                                    class="form-control" x-model="formData.leadership_role"></div>
-                            <div class="mb-3"><label class="form-label">Ministry Staff</label><select
-                                    class="form-select" x-model="formData.ministry_staff">
-                                    <option :value="true">Yes</option>
-                                    <option :value="false">No</option>
-                                </select></div>
-                            <div class="mb-3" x-show="formData.ministry_staff"><label class="form-label">Ministry
-                                    Department</label><input type="text" class="form-control"
-                                    x-model="formData.ministry_department"></div>
-                            <hr>
-                            <div class="mb-3"><label class="form-label">Educational Qualification</label><input
-                                    type="text" class="form-control" x-model="formData.educational_qualification"></div>
-                            <div class="mb-3"><label class="form-label">Institution of Completion</label><input
-                                    type="text" class="form-control" x-model="formData.institution_of_completion"></div>
-                            <div class="mb-3"><label class="form-label">Professional Qualification</label><input
-                                    type="text" class="form-control" x-model="formData.professional_qualification">
-                            </div>
-                            <hr>
-                            <div class="mb-3"><label class="form-label">Work Experience</label><select
-                                    class="form-select" x-model="formData.has_work_experience">
-                                    <option :value="true">Yes</option>
-                                    <option :value="false">No</option>
-                                </select></div>
-                            <div x-show="formData.has_work_experience">
-                                <div class="mb-3"><label class="form-label">Organisation of Employment</label><input
-                                        type="text" class="form-control" x-model="formData.organisation_of_employment">
+                            </template>
+                            <template x-if="!user.kingschatId">
+                                <div class="p-3">
+                                    <h5>Link your KingsChat Account</h5>
+                                    <p>Fetch your profile information and enable KingsChat features.</p>
+                                    <div class="d-flex justify-content-center">
+                                        <a class="kc-web-sdk-btn" @click.prevent="linkWithKingsChat()"></a>
+                                    </div>
+                                    <div x-show="kcMessage" class="alert mt-3"
+                                        :class="kcError ? 'alert-danger' : 'alert-success'" x-text="kcMessage"></div>
                                 </div>
-                                <div class="mb-3"><label class="form-label">Duration</label><input type="text"
-                                        class="form-control" x-model="formData.duration_of_employment"></div>
-                                <div class="mb-3"><label class="form-label">Significant Achievements</label><textarea
-                                        class="form-control" rows="3"
-                                        x-model="formData.significant_achievements"></textarea></div>
-                            </div>
-                            <hr>
-                            <div class="mb-3">
-                                <label class="form-label">Areas of Interest</label>
-                                <input type="text" class="form-control" x-model="interestInput"
-                                    @keydown.enter.prevent="addInterest" placeholder="Type an interest and press Enter">
-                                <div class="mt-2">
-                                    <template x-for="(interest, index) in formData.areas_of_interest" :key="index"><span
-                                            class="badge bg-primary me-1" @click="removeInterest(index)"
-                                            style="cursor: pointer;" x-text="interest + ' &times;'"></span></template>
-                                </div>
-                            </div>
-                            <div class="mb-3"><label class="form-label">Apply For</label><select class="form-select"
-                                    x-model="formData.apply_for">
-                                    <option value="specific_role">Specific Role</option>
-                                    <option value="existing_opening">Existing Opening</option>
-                                </select></div>
+                            </template>
+                        </div>
+                    </div>
 
-                            <div x-show="saveMessage" class="alert mt-3"
-                                :class="saveError ? 'alert-danger' : 'alert-success'" x-text="saveMessage"></div>
-                            <div class="d-flex justify-content-end mt-4">
-                                <button type="button" class="btn btn-secondary me-2"
-                                    @click="cancelEdit()">Cancel</button>
-                                <button type="submit" class="btn btn-gold" :disabled="saveLoading"><span
-                                        x-show="!saveLoading">Save Changes</span><span
-                                        x-show="saveLoading">Saving...</span></button>
-                            </div>
-                        </form>
+                    <!-- VIEW MODE -->
+                    <div class="card" x-show="!isEditing" x-transition>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Profile Details</span>
+                            <button class="btn btn-sm btn-outline-primary" @click="startEditing()">Edit Profile</button>
+                        </div>
+                        <div class="card-body">
+                            <template x-if="user">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item"><strong>Full Name:</strong> <span
+                                            x-text="`${user.firstName || ''} ${user.lastName || ''}`.trim()"></span>
+                                    </li>
+                                    <li class="list-group-item"><strong>Username:</strong> <span
+                                            x-text="user.username || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Email:</strong> <span
+                                            x-text="user.email || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Phone:</strong> <span
+                                            x-text="user.phoneNumber || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Date of Birth:</strong> <span
+                                            x-text="user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : 'Not Provided'"></span>
+                                    </li>
+                                    <hr>
+                                    <li class="list-group-item"><strong>Zone:</strong> <span
+                                            x-text="user.zone || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Group:</strong> <span
+                                            x-text="user.group || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Church:</strong> <span
+                                            x-text="user.church || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Leadership Role:</strong> <span
+                                            x-text="user.leadership_role || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Ministry Staff:</strong> <span
+                                            x-text="user.ministry_staff ? 'Yes' : (user.ministry_staff === false ? 'No' : 'Not Provided')"></span>
+                                    </li>
+                                    <li class="list-group-item"><strong>Ministry Department:</strong> <span
+                                            x-text="user.ministry_department || 'Not Provided'"></span></li>
+                                    <hr>
+                                    <li class="list-group-item"><strong>Educational Qualification:</strong> <span
+                                            x-text="user.educational_qualification || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Institution of Completion:</strong> <span
+                                            x-text="user.institution_of_completion || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Professional Qualification:</strong> <span
+                                            x-text="user.professional_qualification || 'Not Provided'"></span></li>
+                                    <hr>
+                                    <li class="list-group-item"><strong>Has Work Experience:</strong> <span
+                                            x-text="user.has_work_experience ? 'Yes' : (user.has_work_experience === false ? 'No' : 'Not Provided')"></span>
+                                    </li>
+                                    <li class="list-group-item"><strong>Organisation of Employment:</strong> <span
+                                            x-text="user.organisation_of_employment || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Duration of Employment:</strong> <span
+                                            x-text="user.duration_of_employment || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Significant Achievements:</strong>
+                                        <p style="white-space: pre-wrap;" class="mb-0"
+                                            x-text="user.significant_achievements || 'Not Provided'"></p>
+                                    </li>
+                                    <hr>
+                                    <li class="list-group-item"><strong>Areas of Interest:</strong> <span
+                                            x-text="user.areas_of_interest?.join(', ') || 'Not Provided'"></span></li>
+                                    <li class="list-group-item"><strong>Apply For:</strong> <span
+                                            x-text="user.apply_for || 'Not Provided'"></span></li>
+                                </ul>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- EDIT MODE -->
+                    <div class="card" x-show="isEditing" x-transition style="display: none;">
+                        <div class="card-header"><span>Edit Profile Details</span></div>
+                        <div class="card-body">
+                            <form @submit.prevent="saveProfile">
+                                <div class="row mb-3">
+                                    <div class="col"><label class="form-label">First Name</label><input type="text"
+                                            class="form-control" x-model="formData.firstName"></div>
+                                    <div class="col"><label class="form-label">Last Name</label><input type="text"
+                                            class="form-control" x-model="formData.lastName"></div>
+                                </div>
+                                <div class="mb-3"><label class="form-label">Zone</label><input type="text"
+                                        class="form-control" x-model="formData.zone"></div>
+                                <div class="mb-3"><label class="form-label">Group</label><input type="text"
+                                        class="form-control" x-model="formData.group"></div>
+                                <div class="mb-3"><label class="form-label">Church</label><input type="text"
+                                        class="form-control" x-model="formData.church"></div>
+                                <div class="mb-3"><label class="form-label">Leadership Role</label><input type="text"
+                                        class="form-control" x-model="formData.leadership_role"></div>
+                                <div class="mb-3"><label class="form-label">Ministry Staff</label><select
+                                        class="form-select" x-model="formData.ministry_staff">
+                                        <option :value="true">Yes</option>
+                                        <option :value="false">No</option>
+                                    </select></div>
+                                <div class="mb-3" x-show="formData.ministry_staff"><label class="form-label">Ministry
+                                        Department</label><input type="text" class="form-control"
+                                        x-model="formData.ministry_department"></div>
+                                <hr>
+                                <div class="mb-3"><label class="form-label">Educational Qualification</label><input
+                                        type="text" class="form-control" x-model="formData.educational_qualification">
+                                </div>
+                                <div class="mb-3"><label class="form-label">Institution of Completion</label><input
+                                        type="text" class="form-control" x-model="formData.institution_of_completion">
+                                </div>
+                                <div class="mb-3"><label class="form-label">Professional Qualification</label><input
+                                        type="text" class="form-control" x-model="formData.professional_qualification">
+                                </div>
+                                <hr>
+                                <div class="mb-3"><label class="form-label">Work Experience</label><select
+                                        class="form-select" x-model="formData.has_work_experience">
+                                        <option :value="true">Yes</option>
+                                        <option :value="false">No</option>
+                                    </select></div>
+                                <div x-show="formData.has_work_experience">
+                                    <div class="mb-3"><label class="form-label">Organisation of Employment</label><input
+                                            type="text" class="form-control"
+                                            x-model="formData.organisation_of_employment">
+                                    </div>
+                                    <div class="mb-3"><label class="form-label">Duration</label><input type="text"
+                                            class="form-control" x-model="formData.duration_of_employment"></div>
+                                    <div class="mb-3"><label class="form-label">Significant
+                                            Achievements</label><textarea class="form-control" rows="3"
+                                            x-model="formData.significant_achievements"></textarea></div>
+                                </div>
+                                <hr>
+                                <div class="mb-3">
+                                    <label class="form-label">Areas of Interest</label>
+                                    <input type="text" class="form-control" x-model="interestInput"
+                                        @keydown.enter.prevent="addInterest"
+                                        placeholder="Type an interest and press Enter">
+                                    <div class="mt-2">
+                                        <template x-for="(interest, index) in formData.areas_of_interest"
+                                            :key="index"><span class="badge bg-primary me-1"
+                                                @click="removeInterest(index)" style="cursor: pointer;"
+                                                x-text="interest + ' &times;'"></span></template>
+                                    </div>
+                                </div>
+                                <div class="mb-3"><label class="form-label">Apply For</label><select class="form-select"
+                                        x-model="formData.apply_for">
+                                        <option value="specific_role">Specific Role</option>
+                                        <option value="existing_opening">Existing Opening</option>
+                                    </select></div>
+
+                                <div x-show="saveMessage" class="alert mt-3"
+                                    :class="saveError ? 'alert-danger' : 'alert-success'" x-text="saveMessage"></div>
+                                <div class="d-flex justify-content-end mt-4">
+                                    <button type="button" class="btn btn-secondary me-2"
+                                        @click="cancelEdit()">Cancel</button>
+                                    <button type="submit" class="btn btn-gold" :disabled="saveLoading"><span
+                                            x-show="!saveLoading">Save Changes</span><span
+                                            x-show="saveLoading">Saving...</span></button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>

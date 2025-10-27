@@ -1,0 +1,107 @@
+body.product-page {
+    background-color: #fff;
+    /* White background for this page */
+    color: #333;
+    padding-top: 60px;
+    /* Space for the navbar */
+}
+
+/* Main image gallery */
+.product-gallery .main-image {
+    width: 100%;
+    height: 450px;
+    object-fit: cover;
+    border-radius: 15px;
+    background-color: #f8f9fa;
+}
+
+.product-thumbnails {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.thumbnail-item {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.thumbnail-item.active,
+.thumbnail-item:hover {
+    border-color: var(--gold);
+}
+
+/* Product Info Section */
+.product-info .product-sector {
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.product-info .product-title {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.product-info .product-price {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+}
+
+.product-info .product-sbo {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Quantity Selector */
+.quantity-selector {
+    display: flex;
+    align-items: center;
+}
+
+.quantity-selector .btn {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.quantity-selector .quantity-input {
+    width: 60px;
+    text-align: center;
+    border-left: 0;
+    border-right: 0;
+}
+
+/* Hide the number input arrows */
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.quantity-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* Add to Cart Button */
+.btn-add-to-cart {
+    background-color: var(--dark-gold);
+    color: #fff;
+    font-weight: bold;
+    padding: 12px 0;
+    width: 100%;
+    border-radius: 10px;
+}
+
+.btn-add-to-cart:hover {
+    background-color: var(--gold);
+    color: #000;
+}

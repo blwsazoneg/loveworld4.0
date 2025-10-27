@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/shop.css"> <!-- For navbar -->
+    <link rel="stylesheet" href="/css/product-detail.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+
+</head>
+
+<body class="product-page" x-data="productDetailPage" x-cloak>
+
+    <nav class="navbar navbar-expand-lg navbar-shop fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand text-white" href="/shop.html">Made in Loveworld</a>
+
+            <!-- Hamburger Menu -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#shopNavContent">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <div class="collapse navbar-collapse" id="shopNavContent">
+                <!-- Main Nav Links (conditionally shown) -->
+                <ul class="navbar-nav mx-auto" x-show="!showSearch" x-transition x-cloak>
+                    <li class="nav-item"><a class="nav-link" href="#">New Releases</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Best Sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Specials</a></li>
+                    <li class="nav-item"><a class="nav-link highlight" href="#">Food</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">FAQ's</a></li>
+                </ul>
+
+                <!-- Search Input (conditionally shown in the middle) -->
+                <div class="mx-auto" x-show="showSearch" x-transition.opacity>
+                    <!-- On Enter, redirect to the search page -->
+                    <form
+                        @submit.prevent="window.location.href = `/search.html?q=${encodeURIComponent($event.target.elements.query.value)}`">
+                        <input type="text" name="query" class="form-control navbar-search-input"
+                            placeholder="Search products...">
+                    </form>
+                </div>
+
+                <!-- Icons on the Right -->
+                <div class="d-flex align-items-center navbar-right-controls">
+                    <!-- Search Toggle Icon -->
+                    <a href="#" @click.prevent="showSearch = !showSearch">
+                        <i class="bi" :class="showSearch ? 'bi-x-lg' : 'bi-search'"></i>
+                    </a>
+
+                    <!-- Currency Selector Dropdown -->
+                    <!-- <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false" x-text="currentCurrency"></a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
+                            <template x-for="currency in availableCurrencies" :key="currency">
+                                <li><a class="dropdown-item" href="#" @click.prevent="changeCurrency(currency)"
+                                        x-text="currency"></a></li>
+                            </template>
+                        </ul>
+                    </div> -->
+
+                    <!-- Login/User Dropdown -->
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"><i
+                                class="bi bi-person-circle"></i></a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                            <template x-if="!$store.auth.loggedIn">
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                        data-bs-target="#signInUpModal">Sign In / Sign Up</a></li>
+                            </template>
+                            <template x-if="$store.auth.loggedIn">
+                                <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                <li><a class="dropdown-item" href="#">Order History</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+
+                    <a href="/cart.html" class="position-relative">
+                        <i class="bi bi-cart"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                            x-show="$store.cart.itemCount > 0" x-text="$store.cart.itemCount">
+                        </span>
+                    </a>
+                </div>
+            </div>
+
+
+        </div>
+    </nav>
+
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
+
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
+                    </div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-5 pt-5">
+        <div x-show="loading" class="text-center py-5">...</div>
+        <div x-show="error" class="alert alert-danger" x-text="error"></div>
+
+        <div class="row" x-show="!loading && product.id" x-transition>
+            <!-- Column 1: Image Gallery -->
+            <div class="col-lg-6 product-gallery">
+                <img :src="activeImageUrl" class="main-image mb-3" alt="Main product image">
+                <div class="product-thumbnails">
+                    <template x-for="image in product.images" :key="image.id">
+                        <img :src="image.image_url" class="thumbnail-item"
+                            :class="{ 'active': image.image_url === activeImageUrl }"
+                            @click="activeImageUrl = image.image_url">
+                    </template>
+                </div>
+            </div>
+
+            <!-- Column 2: Product Info -->
+            <div class="col-lg-6 product-info">
+                <p class="product-sector" x-text="product.sector_name || 'Uncategorized'"></p>
+                <h1 class="product-title" x-text="product.name"></h1>
+                <p class="product-price" x-text="formatPrice(product.price)"></p>
+
+                <p class="product-sbo">
+                    Sold by: <strong x-text="product.sbo_username || 'N/A'"></strong>
+                </p>
+
+                <p class="product-description" x-text="product.description"></p>
+
+                <hr class="my-4">
+
+                <!-- Quantity & Add to Cart -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="quantity-selector">
+                        <button class="btn btn-outline-secondary" @click="quantity > 1 ? quantity-- : null">-</button>
+                        <input type="number" class="form-control quantity-input" x-model="quantity" min="1">
+                        <button class="btn btn-outline-secondary" @click="quantity++">+</button>
+                    </div>
+                    <div class="flex-grow-1">
+                        <button class="btn btn-add-to-cart" @click="addToCart()">
+                            <i class="bi bi-cart-plus me-2"></i>
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+
+                <div class="alert mt-3" x-show="cartMessage" :class="cartError ? 'alert-danger' : 'alert-success'"
+                    x-text="cartMessage" x-transition>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <h3>Seller Information</h3>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title" x-text="product.sbo_company_name || 'N/A'"></h5>
+                    <p class="mb-1"><strong>Contact Phone:</strong> <span
+                            x-text="product.sbo_contact_phone || 'Not Provided'"></span></p>
+                    <p class="mb-0"><strong>Contact Email:</strong> <span
+                            x-text="product.sbo_contact_email || 'Not Provided'"></span></p>
+                </div>
+            </div>
+        </div>
+        <!-- Related Products -->
+        <div class="col-lg-12 mt-5" x-show="product.related_products && product.related_products.length > 0">
+            <h3>Related Products</h3>
+            <div class="row row-cols-2 row-cols-lg-4 g-4">
+                <template x-for="related in product.related_products" :key="related.id">
+                    <div class="col">
+                        <a :href="`/product-detail.html?id=${related.id}`" class="grid-product-card">
+                            <img :src="related.main_image_url || '/images/placeholder.png'" alt="Related Product">
+                            <div class="card-body">
+                                <h5 class="product-name" x-text="related.name"></h5>
+                                <p class="product-price" x-text="formatPrice(related.price)"></p>
+                            </div>
+                        </a>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/kingschat.bundle.js"></script>
+    <script src="/js/main.js" type="module"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+</body>
+
+</html>
