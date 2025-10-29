@@ -127,7 +127,8 @@ body.shop-page {
 /* 2. The Hero Section (Blue Banner) */
 
 .hero-banner-container .hero-banner {
-    height: 50vh !important;
+    padding-top: 12rem;
+    height: 85vh !important;
 }
 
 .hero-banner-container .carousel-control-prev,
@@ -254,6 +255,13 @@ body.shop-page {
     z-index: 5;
     height: 100%;
     padding: 0 80px;
+}
+
+@media (max-width: 991.98px) {
+    .hero-banner-container .hero-banner {
+    padding-top: 5rem;
+    height: 70vh !important;
+}
 }
 
 /* This contains the text and ensures it is white */

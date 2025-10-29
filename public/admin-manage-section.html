@@ -1,27 +1,19 @@
 <!DOCTYPE html>
-<html lang="en" x-data>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business with Espees</title>
-
-    <!-- CRITICAL STYLESHEETS -->
+    <title>Manage Section Products</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/global.css">
-    <link rel="stylesheet" href="/css/business.css">
     <link rel="stylesheet" href="/css/modal.css">
-
-    <!-- CRITICAL SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <!-- KingsChat SDK Styles -->
     <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
-
 </head>
 
-<body>
-
-    <!-- Navbar Section -->
+<body x-data="adminManageSectionPage">
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
         <div class="container-fluid">
             <a class="navbar-brand text-gold" href="/">
@@ -120,7 +112,71 @@
         </div>
     </nav>
 
-    <!-- Sign In/Up Modal (NEW DESIGN) -->
+    <div class="container my-5 pt-5">
+        <div x-show="!$store.auth.hasRole('Admin')">... Access Denied ...</div>
+
+        <div x-show="$store.auth.hasRole('Admin')">
+            <div class="mb-4">
+                <a href="/admin-content.html" class="btn btn-outline-secondary">&larr; Back to Content Management</a>
+            </div>
+            <h1 class="mb-4">Manage Products for: <span class="text-gold" x-text="section.title"></span></h1>
+
+            <div x-show="loading" class="text-center py-5">... Loading Spinner ...</div>
+            <div x-show="error" class="alert alert-danger" x-text="error"></div>
+
+            <div class="row g-4" x-show="!loading && !error">
+                <!-- Column 1: Products currently IN the section -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">Products in this Section</div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <template x-for="product in productsInSection" :key="product.id">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span x-text="product.name"></span>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                            @click="removeProduct(product.id)">Remove</button>
+                                    </li>
+                                </template>
+                                <li x-show="productsInSection.length === 0" class="list-group-item text-muted">No
+                                    products yet. Add from the list on the right.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 2: All available products to add -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header">All Available Products</div>
+                        <div class="card-body">
+                            <input type="text" class="form-control mb-3" placeholder="Filter available products..."
+                                x-model="filter">
+                            <ul class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                                <template x-for="product in availableProducts" :key="product.id">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span x-text="product.name"></span>
+                                        <button class="btn btn-sm btn-outline-success"
+                                            @click="addProduct(product)">Add</button>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4" x-show="!loading && !error">
+                <div x-show="saveMessage" class="alert" :class="saveError ? 'alert-danger' : 'alert-success'"
+                    x-text="saveMessage"></div>
+                <button class="btn btn-gold btn-lg" @click="saveChanges" :disabled="saveLoading">
+                    <span x-show="!saveLoading">Save All Changes</span>
+                    <span x-show="saveLoading">Saving...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
         x-data="authModal">
         <div class="modal-dialog modal-dialog-centered">
@@ -185,95 +241,10 @@
         </div>
     </div>
 
-    <!-- Hero Section -->
-    <section class="hero-section business-hero text-white d-flex align-items-center justify-content-center text-center">
-        <div class="hero-overlay"></div>
-        <div class="container hero-content">
-            <h1 class="display-4">Business with Espees</h1>
-            <p class="lead my-4">Join our network of innovators and entrepreneurs.</p>
-            <button class="btn btn-lg btn-gold" @click="$refs.contactForm.scrollIntoView({ behavior: 'smooth' })">Get
-                Started</button>
-        </div>
-    </section>
-
-    <!-- Section Two: Read More -->
-    <section class="container my-5 py-5 text-center" x-data="{ showMore: false }">
-        <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <h2 class="fw-bold mb-4">A Partnership for Growth</h2>
-                <p class="lead text-muted">Discover the benefits of partnering with us...</p>
-                <button class="btn btn-outline-gold mt-4" @click="showMore = !showMore"><span
-                        x-text="showMore ? 'Read Less' : 'Read More'"></span></button>
-                <div x-show="showMore" x-collapse>
-                    <div class="extra-content mt-4 text-center">
-                        <p>Our collaborative ecosystem is designed to foster innovation...</p>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-    <!-- Section Three: Business Registration Form -->
-    <section class="contact-form-section py-5" x-ref="contactForm" x-data="businessForm"> <!-- 1. Add x-data -->
-        <div class="container">
-            <div class="form-wrapper">
-                <img src="/images/espees.png" alt="Business Logo" class="business-logo">
-                <div class="form-container">
-                    <p class="form-intro-text">Complete the details below to get started and become a benefits business.
-                    </p>
-
-                    <!-- 2. Add submit handler to the form -->
-                    <form @submit.prevent="handleSubmit">
-                        <!-- Row 1 -->
-                        <div class="form-row">
-                            <label for="businessRegNumber">Business Registration Number:</label>
-                            <!-- 3. Add x-model to inputs -->
-                            <input type="text" class="form-control" id="businessRegNumber" x-model="formData.regNumber">
-                        </div>
-
-                        <!-- Row 2 -->
-                        <div class="form-row">
-                            <label for="registeredName">Registered Business Name:</label>
-                            <input type="text" class="form-control" id="registeredName" x-model="formData.name"
-                                required>
-                        </div>
-
-                        <!-- Row 3 -->
-                        <div class="form-row">
-                            <label for="operatingLocation">Operating Location or HQ:</label>
-                            <input type="text" class="form-control" id="operatingLocation" x-model="formData.location">
-                        </div>
-
-                        <!-- 4. Add a div for server messages -->
-                        <div x-show="message" class="alert mt-4 text-center"
-                            :class="error ? 'alert-danger' : 'alert-success'" x-text="message">
-                        </div>
-
-                        <div class="form-actions">
-                            <!-- 5. Disable button while loading -->
-                            <button type="submit" class="btn btn-gradient-gold px-5" :disabled="loading">
-                                <span x-show="!loading">Submit</span>
-                                <span x-show="loading">Submitting...</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CRITICAL SCRIPTS AT THE END OF BODY -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- This creates window.kingsChatWebSdk -->
     <script src="/vendor/kingschat.bundle.js"></script>
-
-    <!-- This uses window.kingsChatWebSdk -->
     <script src="/js/main.js" type="module"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
 </body>
 
 </html>

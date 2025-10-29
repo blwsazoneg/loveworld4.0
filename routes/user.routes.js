@@ -78,7 +78,13 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        const userResult = await pool.query('SELECT * FROM users WHERE email = $1 OR username = $1', [identifier]);
+        const userResult = await pool.query(
+            `SELECT u.*, sp.id as sbo_profile_id 
+             FROM users u
+             LEFT JOIN sbo_profiles sp ON u.id = sp.user_id
+             WHERE u.email = $1 OR u.username = $1`,
+            [identifier]
+        );
         const user = userResult.rows[0];
         if (!user) return res.status(400).json({ message: 'Invalid credentials.' });
         const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -91,7 +97,7 @@ router.post('/login', async (req, res) => {
             message: 'Logged in successfully.',
             token,
             user: {
-                id: user.id, username: user.username, email: user.email, role: user.role,
+                id: user.id, username: user.username, email: user.email, role: user.role, sbo_profile_id: user.sbo_profile_id,
                 firstName: user.first_name, lastName: user.last_name, dateOfBirth: user.date_of_birth,
                 phoneNumber: user.phone_number, kingschatHandle: user.kingschat_handle,
                 kingschatId: user.kingschat_id, kingschatGender: user.kingschat_gender,
@@ -117,12 +123,43 @@ router.post('/login', async (req, res) => {
 // @desc    Get all users (for Admin dashboard)
 // @access  Private (Admin only)
 router.get('/', authenticateToken, checkRole(['Admin']), async (req, res) => {
+    const page = parseInt(req.query.page || '1');
+    const limit = 15; // Show 15 users per page
+    const offset = (page - 1) * limit;
+    const searchTerm = req.query.search || '';
+
     try {
-        // Select all users but exclude passwords
-        const usersResult = await pool.query(
-            'SELECT id, first_name, last_name, username, email, role, created_at FROM users ORDER BY created_at DESC'
-        );
-        res.status(200).json(usersResult.rows);
+        let countQuery = 'SELECT COUNT(*) FROM users';
+        let mainQuery = `
+            SELECT id, first_name, last_name, username, email, role, created_at 
+            FROM users
+        `;
+        const queryParams = [];
+
+        // Add search conditions if a search term exists
+        if (searchTerm) {
+            queryParams.push(`%${searchTerm}%`);
+            mainQuery += ` WHERE username ILIKE $1 OR email ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1`;
+            countQuery += ` WHERE username ILIKE $1 OR email ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1`;
+        }
+
+        // Get total count for pagination
+        const totalResult = await pool.query(countQuery, queryParams);
+        const totalUsers = parseInt(totalResult.rows[0].count);
+        const totalPages = Math.ceil(totalUsers / limit);
+
+        // Get paginated users
+        queryParams.push(limit);
+        queryParams.push(offset);
+        mainQuery += ` ORDER BY created_at DESC LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
+        const usersResult = await pool.query(mainQuery, queryParams);
+
+        res.status(200).json({
+            users: usersResult.rows,
+            currentPage: page,
+            totalPages: totalPages
+        });
+
     } catch (error) {
         console.error('Error fetching all users:', error);
         res.status(500).json({ message: 'Server error while fetching users.' });
@@ -204,21 +241,32 @@ router.put('/profile', authenticateToken, async (req, res) => {
 // @route   PUT /api/users/:id/role
 // @desc    Update a user's role
 // @access  Private (Admin only)
-router.put('/:id/role', authenticateToken, checkRole(['Admin']), async (req, res) => {
+router.put('/:id/role', authenticateToken, checkRole(['Admin', 'Superadmin']), async (req, res) => { // Allow Superadmins
     const { id: targetUserId } = req.params;
     const { newRole } = req.body;
-    const adminUserId = req.user.id; // The ID of the admin making the change
+    const { id: currentAdminId, role: currentAdminRole } = req.user;
 
-    // Validate the new role to prevent arbitrary roles from being set
-    const allowedRoles = ['User', 'SBO', 'Admin'];
-    if (!newRole || !allowedRoles.includes(newRole)) {
-        return res.status(400).json({ message: 'Invalid role specified.' });
+    // Fetch the target user's current role
+    const targetUserResult = await pool.query('SELECT role FROM users WHERE id = $1', [targetUserId]);
+    if (targetUserResult.rows.length === 0) return res.status(404).json({ message: 'User not found.' });
+    const targetUserRole = targetUserResult.rows[0].role;
+
+    // --- NEW, ROBUST SECURITY RULES ---
+    // 1. Nobody can change the role OF a Superadmin
+    if (targetUserRole === 'Superadmin') {
+        return res.status(403).json({ message: 'Forbidden: The Superadmin role cannot be changed.' });
+    }
+    // 2. Only a Superadmin can promote someone TO Admin
+    if (newRole === 'Admin' && currentAdminRole !== 'Superadmin') {
+        return res.status(403).json({ message: 'Forbidden: Only a Superadmin can create other Admins.' });
+    }
+    // 3. Admins/Superadmins cannot change their own role
+    if (Number(targetUserId) === currentAdminId) {
+        return res.status(400).json({ message: 'Error: You cannot change your own role.' });
     }
 
-    // Prevent an admin from accidentally demoting themselves
-    if (Number(targetUserId) === adminUserId) {
-        return res.status(400).json({ message: 'Admins cannot change their own role.' });
-    }
+    const allowedRoles = ['User', 'SBO', 'Admin']; // Superadmin is not a role you can assign
+    if (!newRole || !allowedRoles.includes(newRole)) return res.status(400).json({ message: 'Invalid role.' });
 
     try {
         const updateUser = await pool.query(

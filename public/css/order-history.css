@@ -1,0 +1,22 @@
+/* public/css/order-history.css */
+body.order-history-page {
+    background-color: #f8f9fa;
+    /* Light grey background */
+    padding-top: 2rem;
+}
+
+.order-history-header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.accordion-button {
+    font-size: 1.1rem;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #f8f9fa;
+    color: #000;
+    box-shadow: none;
+}

@@ -60,6 +60,7 @@
                                     In</button>
 
                                 <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+
                             </div>
                         </template>
 
@@ -71,6 +72,38 @@
                                     x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <hr class="dropdown-divider">
+                                    </li>
+
+                                    <!-- Links for SBOs AND Admins -->
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                                    </li>
+
+                                    <!-- Link for Admins ONLY -->
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                                    </li>
+
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -82,7 +115,6 @@
                     </div>
                 </ul>
             </div>
-
         </div>
     </nav>
 
@@ -120,7 +152,7 @@
                         </div>
                         <hr>
                         <!-- Collapsible Details Section -->
-                        <div x-data="{ open: false }">
+                        <!-- <div x-data="{ open: false }">
                             <button @click="open = !open" class="btn btn-sm btn-outline-secondary">
                                 <span x-text="open ? 'Hide Details' : 'Show Full Profile'"></span>
                             </button>
@@ -138,7 +170,11 @@
                                             x-text="applicant.ministry_position || 'N/A'"></span></li>
                                 </ul>
                             </div>
-                        </div>
+                        </div> -->
+
+                        <button @click="viewUserProfile(applicant.applicant_user_id)"
+                            class="btn btn-sm btn-warning">View
+                            Full Profile</button>
                     </div>
                 </div>
             </template>
@@ -149,7 +185,76 @@
             <h4>No Applicants Yet</h4>
             <p>Check back later to see who has applied for this position.</p>
         </div>
+
+        <div class="modal fade" id="userProfileModal" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Applicant Profile: <span x-text="selectedUser.username"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div x-show="userLoading" class="text-center">... Loading Profile ...</div>
+                        <div x-show="!userLoading && selectedUser.id">
+                            <img :src="`${selectedUser.kingschat_avatar_url}`" alt="Avatar" class="rounded-circle mb-3"
+                                width="200" height="200">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><strong>Full Name:</strong> <span
+                                        x-text="`${selectedUser.first_name} ${selectedUser.last_name}`"></span></li>
+                                <li class="list-group-item"><strong>Email:</strong> <span
+                                        x-text="selectedUser.email"></span></li>
+                                <li class="list-group-item"><strong>Phone:</strong> <span
+                                        x-text="selectedUser.phone_number || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Date of Birth:</strong> <span
+                                        x-text="selectedUser.date_of_birth ? new Date(selectedUser.date_of_birth).toLocaleDateString() : 'N/A'"></span>
+                                </li>
+                                <li class="list-group-item"><strong>KC Handle:</strong> <span
+                                        x-text="selectedUser.kingschat_handle || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Gender:</strong> <span
+                                        x-text="selectedUser.kingschat_gender || 'N/A'"></span></li>
+                                <!-- <hr> -->
+                                <li class="list-group-item"><strong>Zone:</strong> <span
+                                        x-text="selectedUser.zone || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Group:</strong> <span
+                                        x-text="selectedUser.group || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Church:</strong> <span
+                                        x-text="selectedUser.church || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Leadership Role:</strong> <span
+                                        x-text="selectedUser.leadership_role || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Ministry Staff:</strong> <span
+                                        x-text="selectedUser.ministry_staff ? 'Yes' : 'No'"></span></li>
+                                <li class="list-group-item"><strong>Ministry Department:</strong> <span
+                                        x-text="selectedUser.ministry_department || 'N/A'"></span></li>
+                                <!-- <hr> -->
+                                <li class="list-group-item"><strong>Educational Qualification:</strong> <span
+                                        x-text="selectedUser.educational_qualification || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Institution:</strong> <span
+                                        x-text="selectedUser.institution_of_completion || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Professional Qualification:</strong> <span
+                                        x-text="selectedUser.professional_qualification || 'N/A'"></span></li>
+                                <!-- <hr> -->
+                                <li class="list-group-item"><strong>Work Experience:</strong> <span
+                                        x-text="selectedUser.has_work_experience ? 'Yes' : 'No'"></span></li>
+                                <li class="list-group-item"><strong>Organisation:</strong> <span
+                                        x-text="selectedUser.organisation_of_employment || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Duration:</strong> <span
+                                        x-text="selectedUser.duration_of_employment || 'N/A'"></span></li>
+                                <li class="list-group-item"><strong>Achievements:</strong>
+                                    <p style="white-space: pre-wrap;" class="mb-0"
+                                        x-text="selectedUser.significant_achievements || 'N/A'"></p>
+                                </li>
+                                <!-- <hr> -->
+                                <li class="list-group-item"><strong>Areas of Interest:</strong> <span
+                                        x-text="selectedUser.areas_of_interest?.join(', ') || 'N/A'"></span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>

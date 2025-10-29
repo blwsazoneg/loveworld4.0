@@ -75,6 +75,38 @@
                                     x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <hr class="dropdown-divider">
+                                    </li>
+
+                                    <!-- Links for SBOs AND Admins -->
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                                    </li>
+
+                                    <!-- Link for Admins ONLY -->
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                                    </li>
+
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -86,7 +118,6 @@
                     </div>
                 </ul>
             </div>
-
         </div>
     </nav>
 
@@ -178,7 +209,7 @@
                                     <h5 class="text-success">✓ KingsChat Account Linked</h5>
                                     <img :src="user.kingschatAvatarUrl" class="rounded-circle my-3" width="100"
                                         height="100" alt="KC Avatar" x-show="user.kingschatAvatarUrl">
-                                    <p class="mb-0"><strong>KC Username:</strong> <span
+                                    <p class="mb-0"><strong>KC Handle:</strong> <span
                                             x-text="user.kingschatHandle"></span></p>
                                 </div>
                             </template>
@@ -193,6 +224,43 @@
                                         :class="kcError ? 'alert-danger' : 'alert-success'" x-text="kcMessage"></div>
                                 </div>
                             </template>
+                        </div>
+                    </div>
+
+                    <!-- SBO CARD -->
+                    <div class="card mb-4" x-show="user.role === 'User'" x-transition>
+                        <div class="card-header">Become a Seller</div>
+                        <div class="card-body">
+                            <p>Apply to become an SBO and start listing your products on our platform.</p>
+                            <form @submit.prevent="applyToBeSbo">
+                                <div class="mb-3">
+                                    <label class="form-label">Company Name</label>
+                                    <input type="text" class="form-control" x-model="sboFormData.company_name" required>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Contact Phone</label>
+                                        <input type="tel" class="form-control" x-model="sboFormData.contact_phone">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Contact Email</label>
+                                        <input type="email" class="form-control" x-model="sboFormData.contact_email"
+                                            required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">KC Handle</label>
+                                        <input type="text" class="form-control" x-model="sboFormData.kc_handle"
+                                            required>
+                                    </div>
+                                </div>
+                                <div x-show="sboApplyMessage" class="alert"
+                                    :class="sboApplyError ? 'alert-danger' : 'alert-success'" x-text="sboApplyMessage">
+                                </div>
+                                <button type="submit" class="btn btn-gold" :disabled="sboApplyLoading">
+                                    <span x-show="!sboApplyLoading">Submit Application</span>
+                                    <span x-show="sboApplyLoading">Submitting...</span>
+                                </button>
+                            </form>
                         </div>
                     </div>
 
@@ -345,6 +413,7 @@
                             </form>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>

@@ -39,8 +39,12 @@
 
                 <!-- Search Input (conditionally shown in the middle) -->
                 <div class="mx-auto" x-show="showSearch" x-transition.opacity>
-                    <input type="text" class="form-control navbar-search-input"
-                        placeholder="Search products and brands...">
+                    <!-- On Enter, redirect to the search page -->
+                    <form
+                        @submit.prevent="window.location.href = `/search.html?q=${encodeURIComponent($event.target.elements.query.value)}`">
+                        <input type="text" name="query" class="form-control navbar-search-input"
+                            placeholder="Search products...">
+                    </form>
                 </div>
 
                 <!-- Icons on the Right -->
@@ -50,40 +54,71 @@
                         <i class="bi" :class="showSearch ? 'bi-x-lg' : 'bi-search'"></i>
                     </a>
 
-                    <!-- Currency Selector Dropdown -->
-                    <!-- <div class="dropdown">
-                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"
-                            aria-expanded="false" x-text="currentCurrency"></a>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
-                            <template x-for="currency in availableCurrencies" :key="currency">
-                                <li><a class="dropdown-item" href="#" @click.prevent="changeCurrency(currency)"
-                                        x-text="currency"></a></li>
-                            </template>
-                        </ul>
-                    </div> -->
 
                     <!-- Login/User Dropdown -->
+                    <!-- In your shop navbar -->
                     <div class="dropdown">
                         <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"><i
                                 class="bi bi-person-circle"></i></a>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-lg-end ms-4">
-                            <template x-if="!$store.auth.loggedIn">
-                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#signInUpModal">Sign In / Sign Up</a>
-                                </li>
-                            </template>
-                            <template x-if="$store.auth.loggedIn">
-                                <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
-                                <li><a class="dropdown-item" href="#">Order History</a></li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li><a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
-                                </li>
-                            </template>
+
+                        <!-- ======================================================= -->
+                        <!-- DEFINITIVE DROPDOWN MENU FOR ALPINE v3                  -->
+                        <!-- ======================================================= -->
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-lg-end">
+                            <!-- Logged Out View -->
+                            <li x-show="!$store.auth.loggedIn">
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal">Sign In / Sign Up</a>
+                            </li>
+
+                            <!-- Logged In View -->
+                            <!-- We use x-show on each element that should only appear for logged-in users -->
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="/profile.html">My Profile</a>
+                            </li>
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="/order-history.html">Order History</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <hr class="dropdown-divider">
+                            </li>
+
+                            <!-- Links for SBOs AND Admins -->
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                            </li>
+
+                            <!-- Link for Admins ONLY -->
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                            </li>
+
+                            <li x-show="$store.auth.loggedIn">
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
+                            </li>
                         </ul>
                     </div>
-
                     <!-- NEW CART ICON -->
                     <a href="/cart.html" class="position-relative">
                         <i class="bi bi-cart"></i>
@@ -195,7 +230,7 @@
                     <a :href="`/product-detail.html?id=${product.id}`" class="search-product-card">
                         <img :src="product.main_image_url || '/images/placeholder.png'" class="card-img-top"
                             alt="Product Image">
-                        <div class="card-body">
+                        <div class="card-body px-2">
                             <!-- Product Name -->
                             <h5 class="product-name mb-3" x-text="product.name"></h5>
                             <!-- Seller/SBO Name -->

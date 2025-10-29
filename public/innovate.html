@@ -22,6 +22,7 @@
             <a class="navbar-brand text-gold" href="/">
                 <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
                 <b>LW 4.0</b>
+
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,8 +55,9 @@
                                 <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
                                     data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
                                     In</button>
-                                <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#signInUpModal"
-                                    @click="$data.showRegisterForm = true">Sign Up</button>
+
+                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+
                             </div>
                         </template>
 
@@ -67,6 +69,38 @@
                                     x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <hr class="dropdown-divider">
+                                    </li>
+
+                                    <!-- Links for SBOs AND Admins -->
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                                    </li>
+
+                                    <!-- Link for Admins ONLY -->
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                                    </li>
+
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -78,7 +112,6 @@
                     </div>
                 </ul>
             </div>
-
         </div>
     </nav>
 
@@ -113,10 +146,22 @@
 
                             <!-- File Upload -->
                             <div class="mb-3">
-                                <label for="files" class="form-label">Upload supporting files (Optional)</label>
-                                <input class="form-control" type="file" id="files" @change="handleFileSelect" multiple
-                                    accept=".jpg, .jpeg, .png, .mp4, .pdf, .doc, .docx">
-                                <div class="form-text">You can select multiple files (Images, Video, PDF, Docs).</div>
+                                <label for="files" class="form-label">Upload supporting files</label>
+                                <!-- We remove 'multiple' so they add one batch at a time -->
+                                <input class="form-control" type="file" id="files" @change="addFilesToList" multiple>
+                            </div>
+                            <!-- File Preview (now with a remove button) -->
+                            <div x-show="files.length > 0" class="mb-3">
+                                <h6>Selected files:</h6>
+                                <ul class="list-group">
+                                    <template x-for="(file, index) in files" :key="file.name + index">
+                                        <li class="list-group-item">
+                                            <span x-text="file.name"></span>
+                                            <button type="button" @click="removeFile(index)"
+                                                class="btn-close float-end"></button>
+                                        </li>
+                                    </template>
+                                </ul>
                             </div>
 
                             <!-- File Preview -->

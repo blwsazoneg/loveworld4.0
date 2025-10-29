@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import dotenv from 'dotenv';
+import { getActivePricesForProducts } from '../utils/product.helpers.js';
 
 dotenv.config();
 const router = express.Router();
@@ -26,7 +27,7 @@ router.post('/create-session', authenticateToken, async (req, res) => {
         const cartId = cartResult.rows[0].id;
 
         const cartItemsResult = await pool.query(
-            `SELECT p.name, p.description, p.price, ci.quantity 
+            `SELECT ci.product_id, p.name, p.description, p.price, ci.quantity 
              FROM cart_items ci
              JOIN products p ON ci.product_id = p.id
              WHERE ci.cart_id = $1`,
@@ -34,18 +35,40 @@ router.post('/create-session', authenticateToken, async (req, res) => {
         );
 
         if (cartItemsResult.rows.length === 0) {
-            return res.status(400).json({ message: 'Your cart is empty.' });
+            return res.status(400).json({
+                message: 'Your cart is empty.'
+            });
         }
 
-        // 2. Format the cart items into the structure Stripe requires
-        const line_items = cartItemsResult.rows.map(item => {
+        const cartItems = cartItemsResult.rows;
+
+        for (const item of cartItems) {
+            const stockResult = await pool.query('SELECT stock_quantity, allow_backorder FROM products WHERE id = $1', [item.product_id]);
+            const { stock_quantity, allow_backorder } = stockResult.rows[0];
+            if (item.quantity > stock_quantity && !allow_backorder) {
+                return res.status(400).json({ message: `Checkout failed: The quantity for "${item.name}" exceeds the ${stock_quantity} available in stock. Please update your cart.` });
+            }
+        }
+
+        if (cartItems.length === 0)
+            return res.status(400).json({
+                message: 'Your cart is empty.'
+            });
+
+        // THE FIX: Get live prices before creating the Stripe session
+        const productIds = cartItems.map(item => item.product_id);
+        const priceMap = await getActivePricesForProducts(productIds);
+
+        // Format items for Stripe using the live active_price
+        const line_items = cartItems.map(item => {
+            const pricing = priceMap.get(item.product_id);
+            if (!pricing) throw new Error(`Pricing not found for product ID ${item.product_id}`);
+
             return {
                 price_data: {
-                    currency: 'usd', // Your store's base currency
-                    product_data: {
-                        name: item.name,
-                    },
-                    unit_amount: Math.round(item.price * 100), // Price in cents
+                    currency: 'usd',
+                    product_data: { name: item.name },
+                    unit_amount: Math.round(pricing.active_price * 100), // USE THE CORRECT PRICE
                 },
                 quantity: item.quantity,
             };
@@ -92,51 +115,64 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
+        const { userId, cartId } = session.metadata;
 
+        // Use a database transaction for this critical operation
+        const client = await pool.connect();
         try {
-            const { userId, cartId } = session.metadata;
+            await client.query('BEGIN');
 
-            // --- THIS IS THE FIX ---
-
-            // 1. Get all items from the user's cart BEFORE clearing it.
-            const cartItemsResult = await pool.query(
+            // 1. Get all items from the user's cart
+            const cartItemsResult = await client.query(
                 `SELECT ci.product_id, ci.quantity, p.price 
-                 FROM cart_items ci
-                 JOIN products p ON ci.product_id = p.id
-                 WHERE ci.cart_id = $1`,
-                [cartId]
+                 FROM cart_items ci JOIN products p ON ci.product_id = p.id
+                 WHERE ci.cart_id = $1`, [cartId]
             );
             const cartItems = cartItemsResult.rows;
 
             if (cartItems.length > 0) {
-                // 2. Create a new Order and get its new ID
-                const newOrderResult = await pool.query(
+                // 2. Create a new Order and get its ID
+                const newOrderResult = await client.query(
                     `INSERT INTO orders (user_id, total_amount, status, stripe_session_id) 
-                     VALUES ($1, $2, 'paid', $3) 
-                     RETURNING id`,
+                     VALUES ($1, $2, 'paid', $3) RETURNING id`,
                     [userId, session.amount_total / 100, session.id]
                 );
                 const newOrderId = newOrderResult.rows[0].id;
 
-                // 3. Loop through the cart items and insert them into 'order_items'
+                // 3. Loop through items, copy them to order_items, AND UPDATE STOCK
                 for (const item of cartItems) {
-                    await pool.query(
+                    // 3a. Copy to order_items
+                    await client.query(
                         `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) 
                          VALUES ($1, $2, $3, $4)`,
                         [newOrderId, item.product_id, item.quantity, item.price]
                     );
+
+                    // --- THIS IS THE CRITICAL FIX ---
+                    // 3b. Decrement the stock_quantity in the products table
+                    await client.query(
+                        `UPDATE products 
+                         SET stock_quantity = stock_quantity - $1 
+                         WHERE id = $2`,
+                        [item.quantity, item.product_id]
+                    );
                 }
 
-                // 4. Now that the order is saved, clear the user's cart
-                await pool.query('DELETE FROM cart_items WHERE cart_id = $1', [cartId]);
+                // 4. Clear the user's cart
+                await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cartId]);
 
-                console.log(`Order ${newOrderId} fulfilled and cart ${cartId} cleared for user: ${userId}`);
+                await client.query('COMMIT'); // Commit all changes
+                console.log(`Order ${newOrderId} fulfilled, stock updated, and cart ${cartId} cleared.`);
+            } else {
+                // If the cart was somehow empty, just commit what we have (nothing)
+                await client.query('COMMIT');
             }
-            // --------------------
-
         } catch (error) {
-            console.error('Error fulfilling order:', error);
+            await client.query('ROLLBACK'); // If any step fails, undo everything
+            console.error('Error fulfilling order and updating stock:', error);
             return res.status(500).json({ message: 'Error fulfilling order.' });
+        } finally {
+            client.release(); // ALWAYS release the client
         }
     }
 

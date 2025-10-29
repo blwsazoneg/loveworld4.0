@@ -61,6 +61,7 @@
                                     In</button>
 
                                 <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+
                             </div>
                         </template>
 
@@ -72,6 +73,38 @@
                                     x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <hr class="dropdown-divider">
+                                    </li>
+
+                                    <!-- Links for SBOs AND Admins -->
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                                    </li>
+
+                                    <!-- Link for Admins ONLY -->
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                                    </li>
+
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -83,7 +116,6 @@
                     </div>
                 </ul>
             </div>
-
         </div>
     </nav>
 

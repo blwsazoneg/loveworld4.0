@@ -1,5 +1,18 @@
 import { registerUser, loginUser } from './auth.js';
 
+// --- NEW GLOBAL HELPER FUNCTION ---
+function formatPrice(price) {
+    if (price === null || price === undefined || isNaN(price)) {
+        return ''; // Return an empty string if there's no price
+    }
+    // For now, we use the store's base currency (USD).
+    // This could be made dynamic later by passing in a currency code.
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(price);
+};
+
 // ================================================================
 // NEW! GLOBAL AXIOS ERROR INTERCEPTOR
 // This code runs on EVERY API response.
@@ -42,6 +55,36 @@ document.addEventListener('alpine:init', () => {
         loggedIn: false,
         user: null,
         token: null,
+
+        // --- ADD THIS NEW HELPER FUNCTION ---
+        hasRole(requiredRole) {
+            if (!this.loggedIn || !this.user.role) {
+                return false;
+            }
+
+            const userRole = this.user.role;
+
+            // Define the same hierarchy on the frontend
+            const ROLES = {
+                User: [],
+                SBO: ['User'],
+                Admin: ['SBO'],
+                Superadmin: ['Admin']
+            };
+
+            // Recursive check
+            function check(current, required) {
+                if (current === required) return true;
+                const inherited = ROLES[current];
+                if (inherited && inherited.length > 0) {
+                    return inherited.some(r => check(r, required));
+                }
+                return false;
+            }
+
+            return check(userRole, requiredRole);
+        },
+
 
         // Helper function to centralize what happens on a successful login
         handleSuccessfulLogin(data) {
@@ -212,6 +255,17 @@ document.addEventListener('alpine:init', () => {
         saveError: false,
         saveLoading: false,
 
+        sboFormData: {
+            company_name: '',
+            contact_phone: '',
+            contact_email: '',
+            kc_handle: null
+        },
+
+        sboApplyMessage: '',
+        sboApplyError: false,
+        sboApplyLoading: false,
+
         init() {
             // Watch for changes to the global user store and update the local display
             this.$watch('$store.auth.user', (newUser) => {
@@ -230,10 +284,12 @@ document.addEventListener('alpine:init', () => {
             }
             this.isEditing = true;
         },
+
         cancelEdit() {
             this.isEditing = false;
             this.formData = {}; // Discard changes
         },
+
         async saveProfile() {
             this.saveLoading = true; this.saveMessage = ''; this.saveError = false;
             try {
@@ -262,9 +318,11 @@ document.addEventListener('alpine:init', () => {
             }
             this.interestInput = '';
         },
+
         removeInterest(index) {
             this.formData.areas_of_interest.splice(index, 1);
         },
+
         linkWithKingsChat() {
             this.kcMessage = ''; this.kcError = false;
             const loginOptions = {
@@ -287,6 +345,7 @@ document.addEventListener('alpine:init', () => {
                     this.kcError = true;
                 });
         },
+
         async sendTokenToBackend(accessToken) {
             try {
                 const token = Alpine.store('auth').token;
@@ -302,7 +361,27 @@ document.addEventListener('alpine:init', () => {
                 this.kcMessage = error.response ? error.response.data.message : 'A server error occurred.';
                 this.kcError = true;
             }
+        },
+
+        async applyToBeSbo() {
+            this.sboApplyLoading = true;
+            this.sboApplyMessage = '';
+            this.sboApplyError = false;
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.post('/api/sbo/apply', this.sboFormData, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.sboApplyMessage = response.data.message;
+                // You might want to update the user object or page state here
+            } catch (err) {
+                this.sboApplyMessage = err.response?.data?.message || 'Application failed.';
+                this.sboApplyError = true;
+            } finally {
+                this.sboApplyLoading = false;
+            }
         }
+
     }));
 
     //================================================================
@@ -565,19 +644,31 @@ document.addEventListener('alpine:init', () => {
         message: '',
         error: false,
 
+        // NEW state for search and pagination
+        searchTerm: '',
+        currentPage: 1,
+        totalPages: 1,
+
         init() {
-            this.fetchAllUsers();
+            this.fetchAllUsers(1); // Fetch the first page on init
         },
 
-        async fetchAllUsers() {
+        // UPDATED fetch function to handle pages and search
+        async fetchAllUsers(page = 1) {
+            if (page < 1 || (page > this.totalPages && this.totalPages > 0)) return;
             this.loading = true;
-            this.message = '';
             try {
                 const token = Alpine.store('auth').token;
-                const response = await axios.get('/api/users', {
+                const params = new URLSearchParams({
+                    page: page,
+                    search: this.searchTerm
+                });
+                const response = await axios.get(`/api/users?${params.toString()}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                this.users = response.data;
+                this.users = response.data.users;
+                this.currentPage = response.data.currentPage;
+                this.totalPages = response.data.totalPages;
             } catch (err) {
                 this.message = 'Failed to load users.';
                 this.error = true;
@@ -587,6 +678,12 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // NEW search handler
+        searchUsers() {
+            this.fetchAllUsers(1); // Always reset to page 1 for a new search
+        },
+
+        // changeRole function is unchanged
         async changeRole(userId, newRole) {
             if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
                 return;
@@ -597,13 +694,11 @@ document.addEventListener('alpine:init', () => {
                 const response = await axios.put(`/api/users/${userId}/role`, { newRole }, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-
-                // Update the user's role in the local list to reflect the change instantly
+                // Update the user's role in the local list
                 const userIndex = this.users.findIndex(u => u.id === userId);
                 if (userIndex !== -1) {
                     this.users[userIndex].role = newRole;
                 }
-
                 this.message = response.data.message;
                 this.error = false;
             } catch (err) {
@@ -769,6 +864,9 @@ document.addEventListener('alpine:init', () => {
         applicants: [],
         loading: true,
         error: '',
+        selectedUser: {},
+        userLoading: false,
+        userProfileModal: null,
 
         init() {
             const params = new URLSearchParams(window.location.search);
@@ -781,6 +879,15 @@ document.addEventListener('alpine:init', () => {
                 this.error = 'No job ID specified.';
                 this.loading = false;
             }
+
+            // --- THIS IS THE CRITICAL FIX ---
+            // Find the modal element and create a Bootstrap Modal instance
+            this.$nextTick(() => {
+                const modalEl = document.getElementById('userProfileModal');
+                if (modalEl) {
+                    this.userProfileModal = new bootstrap.Modal(modalEl);
+                }
+            });
         },
 
         async fetchApplicants() {
@@ -797,6 +904,22 @@ document.addEventListener('alpine:init', () => {
                 console.error('Fetch applicants error:', err);
             } finally {
                 this.loading = false;
+            }
+        },
+
+        async viewUserProfile(userId) {
+            if (!this.userProfileModal) return; // Safety check
+            this.userLoading = true;
+            this.userProfileModal.show();
+            try {
+                const token = Alpine.store('auth').token;
+                const res = await axios.get(`/api/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.selectedUser = res.data;
+            } catch (err) {
+                console.error(err);
+                // Optionally, show an error inside the modal
+            } finally {
+                this.userLoading = false;
             }
         }
     }));
@@ -887,9 +1010,15 @@ document.addEventListener('alpine:init', () => {
         error: false,
         loading: false,
 
-        handleFileSelect(event) {
-            // event.target.files is a FileList object, we convert it to an array
-            this.files = Array.from(event.target.files);
+        addFilesToList(event) {
+            // Add the newly selected files to our existing files array
+            this.files.push(...Array.from(event.target.files));
+            // Clear the input so the user can select more
+            event.target.value = null;
+        },
+        // NEW function to remove a file
+        removeFile(index) {
+            this.files.splice(index, 1);
         },
 
         async handleSubmit() {
@@ -941,6 +1070,7 @@ document.addEventListener('alpine:init', () => {
         featuredSectors: [],
         loading: true,
         showSearch: false,
+        formatPrice: formatPrice,
 
         async init() {
             this.loading = true;
@@ -989,14 +1119,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // This function can be simplified as it's not used in this component directly anymore
-        formatPrice(priceInUSD) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(priceInUSD);
-        },
-
         scrollCarousel(element, distance) {
             element.scrollBy({ left: distance, behavior: 'smooth' });
         }
@@ -1006,27 +1128,68 @@ document.addEventListener('alpine:init', () => {
     // 15. PRODUCT DETAIL PAGE COMPONENT (product-detail.html)
     //================================================================
     Alpine.data('productDetailPage', () => ({
-        product: {}, productId: null, activeImageUrl: '', quantity: 1, loading: true,
-        error: '', cartMessage: '', cartError: false,
+        product: {},
+        productId: null,
+        activeImageUrl: '',
+        quantity: 1,
+        loading: true,
+        error: '',
+        cartMessage: '',
+        cartError: false,
+        showSearch: false,
+        formatPrice: formatPrice,
+
         init() {
-            const params = new URLSearchParams(window.location.search); this.productId = params.get('id');
-            if (this.productId) this.fetchProductDetails(); else { this.error = 'No product ID specified.'; this.loading = false; }
+            const params = new URLSearchParams(window.location.search);
+            this.productId = params.get('id');
+            if (this.productId) this.fetchProductDetails();
+            else {
+                this.error = 'No product ID specified.';
+                this.loading = false;
+            }
         },
-        formatPrice(priceInUSD) {
-            if (!priceInUSD) return ''; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceInUSD);
-        },
+
         async fetchProductDetails() {
             this.loading = true; this.error = '';
             try {
-                const response = await axios.get(`/api/products/${this.productId}`); this.product = response.data;
-                if (this.product.images?.length > 0) this.activeImageUrl = this.product.images[0].image_url;
-            } catch (err) { this.error = 'Failed to load product details.'; console.error('Fetch product error:', err); } finally { this.loading = false; }
+                const response = await axios.get(`/api/products/${this.productId}`);
+                this.product = response.data;
+                if (this.product.images?.length > 0)
+                    this.activeImageUrl = this.product.images[0].image_url;
+            } catch (err) {
+                this.error = 'Failed to load product details.';
+                console.error('Fetch product error:', err);
+            } finally {
+                this.loading = false;
+            }
         },
+
+        incrementQuantity() {
+            const maxQuantity = this.product.stock_quantity;
+            // Only increment if backorder is allowed OR if quantity is less than stock
+            if (this.product.allow_backorder || this.quantity < maxQuantity) {
+                this.quantity++;
+            }
+        },
+        decrementQuantity() {
+            if (this.quantity > 1) {
+                this.quantity--;
+            }
+        },
+
         async addToCart() {
-            this.cartMessage = 'Adding...'; this.cartError = false;
+            this.cartMessage = 'Adding...';
+            this.cartError = false;
             const result = await Alpine.store('cart').addItem(this.productId, this.quantity);
-            this.cartMessage = result.message; this.cartError = !result.success;
-            setTimeout(() => { this.cartMessage = ''; }, 3000);
+            this.cartMessage = result.message;
+            this.cartError = !result.success;
+            setTimeout(() => {
+                this.cartMessage = '';
+            }, 3000);
+        },
+
+        toggleSearch() {
+            this.showSearch = !this.showSearch;
         }
     }));
 
@@ -1037,14 +1200,25 @@ document.addEventListener('alpine:init', () => {
         items: [],
         itemCount: 0,
 
+        // This function is now the single point of truth for updating the local state
+        _updateState(cartItems) {
+            this.items = cartItems;
+            this.itemCount = this.items.reduce((total, item) => total + item.quantity, 0);
+            console.log('Cart state updated. Item count:', this.itemCount);
+        },
+
         async initialize() {
             if (Alpine.store('auth').loggedIn) {
                 try {
                     const token = Alpine.store('auth').token;
                     const response = await axios.get('/api/cart', { headers: { 'Authorization': `Bearer ${token}` } });
-                    this.items = response.data;
-                    this.updateItemCount();
-                } catch (error) { console.error('Failed to initialize cart:', error); }
+                    this._updateState(response.data); // Use the new state updater
+                } catch (error) {
+                    console.error('Failed to initialize cart:', error);
+                    this._updateState([]); // Clear cart on error
+                }
+            } else {
+                this._updateState([]); // Clear cart if logged out
             }
         },
 
@@ -1055,8 +1229,9 @@ document.addEventListener('alpine:init', () => {
             }
             try {
                 const token = Alpine.store('auth').token;
-                await axios.post('/api/cart/items', { productId, quantity }, { headers: { 'Authorization': `Bearer ${token}` } });
-                await this.initialize();
+                // The POST returns the new cart state, let's use it
+                const response = await axios.post('/api/cart/items', { productId, quantity }, { headers: { 'Authorization': `Bearer ${token}` } });
+                await this.initialize(); // Re-fetch the whole cart for consistency
                 return { success: true, message: 'Item added to cart!' };
             } catch (error) {
                 console.error('Failed to add item to cart:', error);
@@ -1079,10 +1254,6 @@ document.addEventListener('alpine:init', () => {
                 await axios.delete(`/api/cart/items/${productId}`, { headers: { 'Authorization': `Bearer ${token}` } });
                 await this.initialize();
             } catch (error) { console.error('Failed to remove item:', error); }
-        },
-
-        updateItemCount() {
-            this.itemCount = this.items.reduce((total, item) => total + item.quantity, 0);
         }
     });
 
@@ -1091,17 +1262,34 @@ document.addEventListener('alpine:init', () => {
     // 17. CART PAGE COMPONENT
     // ===============================================================
     Alpine.data('cartPage', () => ({
-        checkoutError: '', isCheckingOut: false, debounce: null,
-        formatPrice(priceInUSD) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceInUSD); },
+        checkoutError: '',
+        isCheckingOut: false,
+        debounce: null,
+        showSearch: false,
+        formatPrice: formatPrice,
+
         subtotal() {
-            const totalInUSD = Alpine.store('cart').items.reduce((total, item) => total + (item.price * item.quantity), 0);
+            // THE FIX: Use 'active_price', which now correctly exists on the item object
+            const totalInUSD = Alpine.store('cart').items.reduce((total, item) => {
+                // Add a check to ensure active_price is a number
+                const price = typeof item.active_price === 'number' ? item.active_price : 0;
+                return total + (price * item.quantity);
+            }, 0);
             return this.formatPrice(totalInUSD);
         },
+
         updateQuantity(productId, quantity) {
             clearTimeout(this.debounce);
-            this.debounce = setTimeout(() => { Alpine.store('cart').updateItem(productId, parseInt(quantity)); }, 500);
+            this.debounce = setTimeout(() => {
+                Alpine.store('cart').updateItem(productId, parseInt(quantity));
+            }, 500);
         },
-        removeItem(productId) { if (confirm('Remove this item?')) Alpine.store('cart').removeItem(productId); },
+
+        removeItem(productId) {
+            if (confirm('Remove this item?'))
+                Alpine.store('cart').removeItem(productId);
+        },
+
         async proceedToCheckout() {
             this.isCheckingOut = true; this.checkoutError = '';
             try {
@@ -1112,6 +1300,10 @@ document.addEventListener('alpine:init', () => {
                 this.checkoutError = error.response ? error.response.data.message : 'Checkout failed.';
                 this.isCheckingOut = false;
             }
+        },
+
+        toggleSearch() {
+            this.showSearch = !this.showSearch;
         }
     }));
 
@@ -1136,6 +1328,8 @@ document.addEventListener('alpine:init', () => {
 
         loading: true,
         error: '',
+
+        formatPrice: formatPrice,
 
         init() {
             const params = new URLSearchParams(window.location.search);
@@ -1187,13 +1381,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        formatPrice(priceInUSD) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(priceInUSD);
-        },
-
         scrollCarousel(element, distance) {
             if (element) {
                 element.scrollBy({ left: distance, behavior: 'smooth' });
@@ -1211,6 +1398,9 @@ document.addEventListener('alpine:init', () => {
         products: [],
         searchTerm: '',
         loading: true,
+        showSearch: false,
+        formatPrice: formatPrice,
+
         init() {
             const params = new URLSearchParams(window.location.search);
             this.searchTerm = params.get('q');
@@ -1225,12 +1415,11 @@ document.addEventListener('alpine:init', () => {
             } catch (err) { console.error(err); }
             finally { this.loading = false; }
         },
-        formatPrice(priceInUSD) {
-            if (!priceInUSD) return '';
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency', currency: 'USD'
-            }).format(priceInUSD);
-        },
+
+        toggleSearch() {
+            this.showSearch = !this.showSearch;
+        }
+
     }));
 
     //================================================================
@@ -1241,21 +1430,18 @@ document.addEventListener('alpine:init', () => {
         loading: true,
         error: '',
 
+        // New state for search and pagination
+        searchTerm: '',
+        currentPage: 1,
+        totalPages: 1,
+        formatPrice: formatPrice,
+
         init() {
             // Watch for login/logout to fetch orders automatically
             this.$watch('$store.auth.loggedIn', (isLoggedIn) => {
-                if (isLoggedIn) {
-                    this.fetchOrders();
-                } else {
-                    this.orders = []; // Clear orders on logout
-                }
+                if (isLoggedIn) this.fetchOrders(); else this.orders = [];
             });
-
-            if (Alpine.store('auth').loggedIn) {
-                this.fetchOrders();
-            } else {
-                this.loading = false;
-            }
+            if (Alpine.store('auth').loggedIn) this.fetchOrders(); else this.loading = false;
 
             // Add event listener for when an accordion item is shown
             const accordion = this.$root.querySelector('#orderAccordion');
@@ -1267,16 +1453,30 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async fetchOrders() {
+        async fetchOrders(page = 1) {
+            if (page < 1 || (page > this.totalPages && this.totalPages > 0)) return;
             this.loading = true; this.error = '';
             try {
                 const token = Alpine.store('auth').token;
-                const response = await axios.get('/api/orders/my-orders', { headers: { 'Authorization': `Bearer ${token}` } });
-                this.orders = response.data.map(order => ({ ...order, items: null, itemsLoading: false }));
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: 10,
+                    search: this.searchTerm
+                });
+                const response = await axios.get(`/api/orders/my-orders?${params.toString()}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.orders = response.data.orders.map(o => ({ ...o, items: null, itemsLoading: false }));
+                this.currentPage = response.data.currentPage;
+                this.totalPages = response.data.totalPages;
             } catch (err) {
                 this.error = 'Failed to load order history.';
-                console.error(err);
             } finally { this.loading = false; }
+        },
+
+        // New search handler
+        searchOrders() {
+            this.fetchOrders(1); // Always reset to page 1 for a new search
         },
 
         async fetchOrderDetails(orderId) {
@@ -1293,14 +1493,904 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.orders[orderIndex].itemsLoading = false;
             }
-        },
-
-        formatPrice(priceInUSD) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(priceInUSD);
         }
     }));
 
+    // 20. --- ADD THESE NEW ADMIN COMPONENTS ---
+    Alpine.data('adminProductsPage', () => ({
+        products: [],
+        loading: true,
+        formatPrice: formatPrice,
+        currentPage: 1,
+        totalPages: 1,
+        message: '',
+        error: false,
 
+        init() {
+            if (Alpine.store('auth').loggedIn) {
+                this.fetchProducts(1); // Fetch the first page on init
+            } else {
+                this.loading = false;
+            }
+        },
+
+        // Update the fetch function to handle pages
+        async fetchProducts(page = 1) {
+            if (page < 1 || (page > this.totalPages && this.totalPages > 0)) return;
+            this.loading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const params = new URLSearchParams({ page });
+                const response = await axios.get(`/api/admin/products?${params.toString()}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.products = response.data.products;
+                this.currentPage = response.data.currentPage;
+                this.totalPages = response.data.totalPages;
+            } catch (err) {
+                console.error(err);
+            } finally {
+                this.loading = false;
+            }
+        },
+        async deleteProduct(productId) {
+            if (!confirm('Are you sure you want to permanently delete this product and all its images? This action cannot be undone.')) {
+                return;
+            }
+
+            this.message = ''; this.error = false;
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.delete(`/api/admin/products/${productId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                // Remove the product from the local list for an instant UI update
+                this.products = this.products.filter(p => p.id !== productId);
+
+                this.message = response.data.message;
+                this.error = false;
+            } catch (err) {
+                this.message = err.response?.data?.message || 'Failed to delete product.';
+                this.error = true;
+                console.error('Delete product error:', err);
+            }
+        }
+    }));
+
+    // 21
+    Alpine.data('adminCreateProductPage', () => ({
+        formData: {
+            name: '', description: '', price: 0, stock_quantity: 0, sector_id: '', brand_id: '',
+            sbo_profile_id: ''
+        },
+
+        files: [],
+        imagePreviews: [],
+        sectors: [],
+        brands: [],
+        message: '',
+        error: false,
+        loading: false,
+        sboProfiles: [], // Add new array
+
+        init() {
+            this.fetchInitialData();
+            this.$nextTick(() => {
+                const user = Alpine.store('auth').user;
+                // If the logged-in user is an SBO and has a profile ID, auto-select it.
+                if (user && user.role === 'SBO' && user.sbo_profile_id) {
+                    this.formData.sbo_profile_id = user.sbo_profile_id;
+                }
+            });
+        },
+
+        async fetchInitialData() {
+            try {
+                const token = Alpine.store('auth').token;
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const [sectorsRes, brandsRes, sboProfilesRes] = await Promise.all([
+                    axios.get('/api/products/sectors'),
+                    axios.get('/api/products/brands'),
+                    axios.get('/api/admin/sbo-profiles', { headers }) // Fetch SBOs
+                ]);
+                this.sectors = sectorsRes.data;
+                this.brands = brandsRes.data;
+                this.sboProfiles = sboProfilesRes.data;
+            } catch (err) {
+                console.error('Failed to fetch sectors/brands', err);
+            }
+        },
+        handleFileSelect(event) {
+            this.files = Array.from(event.target.files);
+            this.imagePreviews = [];
+            for (const file of this.files) {
+                this.imagePreviews.push(URL.createObjectURL(file));
+            }
+        },
+        async handleSubmit() {
+            this.loading = true; this.message = ''; this.error = false;
+            const data = new FormData();
+            for (const key in this.formData) { data.append(key, this.formData[key]); }
+            for (const file of this.files) { data.append('images', file); }
+
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.post('/api/admin/products', data, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
+                this.message = response.data.message + ' Redirecting...';
+                setTimeout(() => window.location.href = '/admin-products.html', 1500);
+            } catch (err) {
+                this.message = err.response?.data?.message || 'Failed to create product.';
+                this.error = true; this.loading = false;
+            }
+        }
+    }));
+
+    // 22
+    Alpine.data('adminEditProductPage', () => ({
+        productId: null,
+        formData: {},
+        currentImages: [], // For displaying existing images
+        newFiles: [], // For staging new uploads
+        sectors: [],
+        brands: [],
+        loading: true,
+        fetchError: '',
+        submitLoading: false,
+        submitMessage: '',
+        submitError: false,
+        sboProfiles: [], // Add new array
+
+
+        // Helper getters/setters to handle date formatting for the input[type=date]
+        get sale_start_date_formatted() {
+            return this.formData.sale_start_date ? new Date(this.formData.sale_start_date).toISOString().split('T')[0] : '';
+        },
+        set sale_start_date_formatted(value) { this.formData.sale_start_date = value; },
+        get sale_end_date_formatted() {
+            return this.formData.sale_end_date ? new Date(this.formData.sale_end_date).toISOString().split('T')[0] : '';
+        },
+        set sale_end_date_formatted(value) { this.formData.sale_end_date = value; },
+
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            this.productId = params.get('id');
+            if (this.productId) {
+                this.fetchInitialData();
+            } else {
+                this.fetchError = 'No product ID provided.'; this.loading = false;
+            };
+            this.$nextTick(() => {
+                const user = Alpine.store('auth').user;
+                // If the logged-in user is an SBO and has a profile ID, auto-select it.
+                if (user && user.role === 'SBO' && user.sbo_profile_id) {
+                    this.formData.sbo_profile_id = user.sbo_profile_id;
+                }
+            });
+        },
+
+        async fetchInitialData() {
+            this.loading = true;
+            this.fetchError = '';
+            try {
+                const token = Alpine.store('auth').token;
+                const headers = { 'Authorization': `Bearer ${token}` };
+
+                // THE FIX: Add the missing axios call for '/api/admin/sbo-profiles'
+                const [productRes, imagesRes, sectorsRes, brandsRes, sboProfilesRes] = await Promise.all([
+                    axios.get(`/api/admin/products/${this.productId}`, { headers }),
+                    axios.get(`/api/admin/products/${this.productId}/images`, { headers }),
+
+                    // These don't require auth, but it doesn't hurt to send the header
+                    axios.get('/api/products/sectors'),
+                    axios.get('/api/products/brands'),
+
+                    // THIS WAS THE MISSING API CALL
+                    axios.get('/api/admin/sbo-profiles', { headers })
+                ]);
+
+                this.formData = productRes.data;
+                this.currentImages = imagesRes.data;
+                this.sectors = sectorsRes.data;
+                this.brands = brandsRes.data;
+
+                // This line will now work because sboProfilesRes exists
+                this.sboProfiles = sboProfilesRes.data;
+
+            } catch (err) {
+                this.fetchError = err.response?.data?.message || 'Failed to load product data for editing.';
+                console.error('Fetch edit data error:', err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        handleFileSelect(event) {
+            this.newFiles = Array.from(event.target.files);
+        },
+
+        async deleteImage(imageId) {
+            if (!confirm('Are you sure you want to delete this image?')) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/admin/images/${imageId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                // Remove the image from the local list instantly
+                this.currentImages = this.currentImages.filter(img => img.id !== imageId);
+            } catch (err) {
+                alert('Failed to delete image.');
+                console.error(err);
+            }
+        },
+
+        async handleSubmit() {
+            this.submitLoading = true; this.submitMessage = ''; this.submitError = false;
+
+            // 1. Create a FormData object to hold everything
+            const data = new FormData();
+
+            // 2. Append all the text/numeric data from the form
+            for (const key in this.formData) {
+                // Handle null/undefined values correctly
+                const value = this.formData[key];
+                if (value !== null && value !== undefined) {
+                    data.append(key, value);
+                }
+            }
+
+            // 3. Append any NEW files the user has selected
+            for (const file of this.newFiles) {
+                data.append('newImages', file);
+            }
+
+            try {
+                const token = Alpine.store('auth').token;
+
+                // 4. Send a single POST request to our new endpoint
+                const response = await axios.post(`/api/admin/products/${this.productId}/update`, data, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data' // Crucial for sending files
+                    }
+                });
+
+                this.submitMessage = response.data.message + ' Redirecting...';
+                setTimeout(() => window.location.href = '/admin-products.html', 1500);
+
+            } catch (err) {
+                this.submitMessage = err.response?.data?.message || 'Failed to save changes.';
+                this.submitError = true;
+            } finally {
+                this.submitLoading = false;
+            }
+        }
+    }));
+
+    // 23
+    Alpine.data('adminCategoriesPage', () => ({
+        sectors: [],
+        brands: [],
+        loading: true,
+
+        // State for the 'Add Sector' form
+        newSector: {
+            name: '',
+            image_url_file: null,
+            hero_image_url_file: null,
+            is_featured: false
+        },
+
+        sectorMessage: '',
+        sectorError: false,
+        // State for the 'Add Brand' form
+        newBrandName: '',
+        brandMessage: '',
+        brandError: false,
+
+        init() {
+            if (Alpine.store('auth').user?.role === 'Admin') {
+                this.fetchCategories();
+            }
+        },
+        async fetchCategories() {
+            this.loading = true;
+            try {
+                const [sectorsRes, brandsRes] = await Promise.all([
+                    axios.get('/api/products/sectors'),
+                    axios.get('/api/products/brands')
+                ]);
+                this.sectors = sectorsRes.data;
+                this.brands = brandsRes.data;
+            } catch (err) {
+                console.error(err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // --- Sector Methods ---
+        async addSector() {
+            this.sectorMessage = '';
+            this.sectorError = false;
+            this.loading = true; // Use a loading state
+
+            // 1. Create a FormData object
+            const data = new FormData();
+            data.append('name', this.newSector.name);
+            data.append('is_featured', this.newSector.is_featured);
+
+            // 2. Append files ONLY if they have been selected
+            if (this.newSector.image_url_file) {
+                data.append('image_url', this.newSector.image_url_file);
+            }
+            if (this.newSector.hero_image_url_file) {
+                data.append('hero_image_url', this.newSector.hero_image_url_file);
+            }
+
+            try {
+                const token = Alpine.store('auth').token;
+                // 3. Send the request with the correct headers
+                const response = await axios.post('/api/admin/sectors', data, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                this.sectors.push(response.data);
+                this.sectors.sort((a, b) => a.name.localeCompare(b.name));
+                // Reset the form object and clear file inputs if needed
+                this.newSector = { name: '', image_url_file: null, hero_image_url_file: null, is_featured: false };
+                this.sectorMessage = 'Sector added!';
+
+            } catch (err) {
+                this.sectorError = true;
+                this.sectorMessage = err.response?.data?.message || 'Failed to add sector.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async deleteSector(sectorId) {
+            if (!confirm('Are you sure? Deleting a sector will un-categorize its products.')) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/admin/sectors/${sectorId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.sectors = this.sectors.filter(s => s.id !== sectorId); // Remove from list instantly
+            } catch (err) { alert('Failed to delete sector.'); }
+        },
+
+        // --- Brand Methods ---
+        async addBrand() {
+            this.brandMessage = '';
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.post('/api/admin/brands',
+                    { name: this.newBrandName },
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+                this.brands.push(response.data);
+                this.brands.sort((a, b) => a.name.localeCompare(b.name));
+                this.newBrandName = '';
+                this.brandError = false;
+                this.brandMessage = 'Brand added!';
+            } catch (err) {
+                this.brandError = true;
+                this.brandMessage = err.response?.data?.message || 'Failed to add brand.';
+            }
+        },
+        async deleteBrand(brandId) {
+            if (!confirm('Are you sure? Deleting a brand will un-categorize its products.')) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/admin/brands/${brandId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.brands = this.brands.filter(b => b.id !== brandId);
+            } catch (err) { alert('Failed to delete brand.'); }
+        }
+    }));
+
+    // 24
+    Alpine.data('adminContentPage', () => ({
+        slides: [],
+        loading: true,
+        newSlide: {
+            title_text: '',
+            subtitle_text: '',
+            background_image_url_file: null
+        },
+
+        // State for Shop Sections
+        shopSections: [],
+        newSection: {
+            title: '',
+            type: 'grid',
+            display_order: 0,
+            is_active: true,
+            start_date: '',
+            end_date: ''
+        },
+
+        // Add a loading state for collage uploads
+        collageFormLoading: null,
+        // State to track which item is being edited
+        editingSlideId: null,
+        editingSectionId: null,
+
+        init() {
+            if (Alpine.store('auth').user?.role === 'Admin')
+                this.fetchAllContent();
+        },
+
+        async fetchAllContent() {
+            this.loading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const [slidesRes, sectionsRes] = await Promise.all([
+                    axios.get('/api/admin/hero-slides', { headers }),
+                    axios.get('/api/admin/shop-sections', { headers })
+                ]);
+                this.slides = slidesRes.data;
+                this.shopSections = sectionsRes.data;
+            } catch (err) { console.error(err); }
+            finally { this.loading = false; }
+        },
+
+        async addSlide() {
+            const data = new FormData();
+            data.append('title_text', this.newSlide.title_text);
+            data.append('subtitle_text', this.newSlide.subtitle_text);
+            if (this.newSlide.background_image_url_file) {
+                data.append('background_image_url', this.newSlide.background_image_url_file);
+            } else {
+                alert('Background image is required.'); return;
+            }
+            data.append('is_active', true); // Default to active
+
+            try {
+                const token = Alpine.store('auth').token;
+                const res = await axios.post('/api/admin/hero-slides', data, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
+                this.slides.push(res.data);
+                this.newSlide = { title_text: '', subtitle_text: '', background_image_url_file: null };
+            } catch (err) { alert('Failed to add slide.'); console.error(err); }
+        },
+
+        async deleteSlide(slideId) {
+            if (!confirm('Are you sure you want to delete this entire slide and all its collage images?')) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/admin/hero-slides/${slideId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.slides = this.slides.filter(s => s.id !== slideId);
+            } catch (err) { alert('Failed to delete slide.'); console.error(err); }
+        },
+
+        async addCollageImage(slideId, slideIndex) {
+            this.collageFormLoading = slideId; // Set loading state for this specific form
+
+            // 1. Find the specific inputs for this slide using their unique IDs
+            const fileInput = document.getElementById(`collage_file_${slideId}`);
+            const widthInput = document.getElementById(`collage_width_${slideId}`);
+            const heightInput = document.getElementById(`collage_height_${slideId}`);
+            const topInput = document.getElementById(`collage_top_${slideId}`);
+            const leftInput = document.getElementById(`collage_left_${slideId}`);
+
+            if (!fileInput.files[0]) {
+                alert('Please select an image file.');
+                this.collageFormLoading = null;
+                return;
+            }
+
+            // 2. Create FormData and append ALL values
+            const data = new FormData();
+            data.append('image_url', fileInput.files[0]);
+            data.append('width', widthInput.value);
+            data.append('height', heightInput.value);
+            data.append('top_position', topInput.value);
+            data.append('left_position', leftInput.value);
+            // You could add z-index here as well if needed
+
+            try {
+                const token = Alpine.store('auth').token;
+                const res = await axios.post(`/api/admin/hero-slides/${slideId}/collage`, data, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                // 3. Add the new image to the correct slide's array to update the UI
+                this.slides[slideIndex].collage_images.push(res.data);
+
+                // 4. Clear the form inputs for the next upload
+                fileInput.value = null;
+                widthInput.value = '';
+                heightInput.value = '';
+                topInput.value = '';
+                leftInput.value = '';
+
+            } catch (err) {
+                alert('Failed to add collage image.');
+                console.error(err);
+            } finally {
+                this.collageFormLoading = null; // Reset loading state
+            }
+        },
+
+        async deleteCollageImage(imageId, slideIndex) {
+            if (!confirm('Are you sure you want to delete this collage image?')) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/admin/collage-images/${imageId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.slides[slideIndex].collage_images = this.slides[slideIndex].collage_images.filter(img => img.id !== imageId);
+            } catch (err) { alert('Failed to delete collage image.'); console.error(err); }
+        },
+
+        async addShopSection() {
+            try {
+                const token = Alpine.store('auth').token;
+                // Convert empty date strings to null for the database
+                const payload = {
+                    ...this.newSection,
+                    start_date: this.newSection.start_date || null,
+                    end_date: this.newSection.end_date || null
+                };
+                const res = await axios.post('/api/admin/shop-sections', payload, { headers: { 'Authorization': `Bearer ${token}` } });
+
+                this.shopSections.push(res.data);
+                this.shopSections.sort((a, b) => a.display_order - b.display_order);
+                // Reset form
+                this.newSection = { title: '', type: 'grid', display_order: 0, is_active: true, start_date: '', end_date: '' };
+            } catch (err) { alert('Failed to add shop section.'); console.error(err); }
+        },
+
+        async deleteShopSection(sectionId) {
+            if (!confirm('Are you sure you want to delete this section?')) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/admin/shop-sections/${sectionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.shopSections = this.shopSections.filter(s => s.id !== sectionId);
+            } catch (err) { alert('Failed to delete section.'); console.error(err); }
+        },
+
+        // --- NEW EDITING FUNCTIONS ---
+        async saveSlide(slide) {
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.put(`/api/admin/hero-slides/${slide.id}`, slide, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.editingSlideId = null; // Exit edit mode
+            } catch (err) { alert('Failed to save slide.'); console.error(err); }
+        },
+
+        async saveSection(section) {
+            try {
+                const token = Alpine.store('auth').token;
+                // Format dates correctly before sending
+                const payload = {
+                    ...section,
+                    start_date: section.start_date || null,
+                    end_date: section.end_date || null,
+                };
+                await axios.put(`/api/admin/shop-sections/${section.id}`, payload, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.editingSectionId = null; // Exit edit mode
+            } catch (err) { alert('Failed to save section.'); console.error(err); }
+        }
+
+    }));
+
+    // 25
+    Alpine.data('adminManageSectionPage', () => ({
+        sectionId: null,
+        section: {},
+        allProducts: [],
+        linkedProductIds: [],
+        filter: '',
+        loading: true, error: '',
+        saveLoading: false, saveMessage: '', saveError: false,
+
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            this.sectionId = params.get('id');
+            if (this.sectionId) this.fetchData();
+            else { this.error = 'No section ID provided.'; this.loading = false; }
+        },
+
+        async fetchData() {
+            this.loading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const [sectionRes, allProductsRes] = await Promise.all([
+                    axios.get(`/api/admin/shop-sections/${this.sectionId}`, { headers }),
+                    axios.get('/api/admin/products', { headers }) // Fetch all products
+                ]);
+                this.section = sectionRes.data;
+                this.linkedProductIds = sectionRes.data.linked_product_ids;
+                this.allProducts = allProductsRes.data.products; // The list of all possible products
+            } catch (err) { this.error = 'Failed to load data.'; }
+            finally { this.loading = false; }
+        },
+
+        // Computed property: returns products currently in the section
+        get productsInSection() {
+            return this.allProducts.filter(p => this.linkedProductIds.includes(p.id));
+        },
+
+        // Computed property: returns products NOT in the section, matching the filter
+        get availableProducts() {
+            return this.allProducts.filter(p =>
+                !this.linkedProductIds.includes(p.id) &&
+                p.name.toLowerCase().includes(this.filter.toLowerCase())
+            );
+        },
+
+        // Move a product from the 'available' list to the 'in section' list
+        addProduct(product) {
+            this.linkedProductIds.push(product.id);
+        },
+
+        // Move a product from the 'in section' list back to the 'available' list
+        removeProduct(productId) {
+            this.linkedProductIds = this.linkedProductIds.filter(id => id !== productId);
+        },
+
+        async saveChanges() {
+            this.saveLoading = true; this.saveMessage = ''; this.saveError = false;
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.post(`/api/admin/shop-sections/${this.sectionId}/products`,
+                    { productIds: this.linkedProductIds }, // Send the final array of IDs
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+                this.saveMessage = response.data.message;
+            } catch (err) {
+                this.saveMessage = err.response?.data?.message || 'Failed to save changes.';
+                this.saveError = true;
+            } finally {
+                this.saveLoading = false;
+            }
+        }
+    }));
+
+    // 26
+    Alpine.data('adminOrdersPage', () => ({
+        orders: [],
+        loading: true,
+        error: '',
+        searchTerm: '',
+        currentPage: 1,
+        totalPages: 1,
+
+        init() {
+            // Use a watcher to fetch data only when login is confirmed
+            this.$watch('$store.auth.loggedIn', (isLoggedIn) => {
+                if (isLoggedIn && ['Admin', 'SBO', 'Superadmin'].includes(Alpine.store('auth').user.role)) {
+                    this.fetchOrders();
+                }
+            });
+            if (Alpine.store('auth').loggedIn && ['Admin', 'SBO', 'Superadmin'].includes(Alpine.store('auth').user.role)) {
+                this.fetchOrders();
+            } else {
+                this.loading = false;
+            }
+        },
+
+        async fetchOrders(page = 1) {
+            if (page < 1 || (page > this.totalPages && this.totalPages > 0)) return;
+            this.loading = true; this.error = '';
+            try {
+                const token = Alpine.store('auth').token;
+                const params = new URLSearchParams({ page, search: this.searchTerm });
+                const response = await axios.get(`/api/admin/orders?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.orders = response.data.orders;
+                this.currentPage = response.data.currentPage;
+                this.totalPages = response.data.totalPages;
+            } catch (err) { this.error = 'Failed to load orders.'; }
+            finally { this.loading = false; }
+        },
+        searchOrders() { this.fetchOrders(1); },
+        formatPrice: formatPrice,
+    }));
+
+    // 27
+    Alpine.data('adminOrderDetailPage', () => ({
+        order: {},
+        orderId: null,
+        loading: true,
+        error: '',
+
+        // --- NEW STATE FOR STATUS UPDATES ---
+        selectedStatus: '',
+        statusLoading: false,
+        statusMessage: '',
+        statusError: false,
+
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            this.orderId = params.get('id');
+            if (this.orderId) {
+                this.fetchOrder();
+            } else {
+                this.error = 'No order ID provided.';
+                this.loading = false;
+            }
+        },
+
+        async fetchOrder() {
+            this.loading = true; this.error = '';
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.get(`/api/admin/orders/${this.orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.order = response.data;
+                this.selectedStatus = this.order.status; // Pre-select the current status in the dropdown
+            } catch (err) {
+                this.error = err.response?.data?.message || 'Failed to load order details.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // --- NEW FUNCTION TO UPDATE THE STATUS ---
+        async updateStatus() {
+            this.statusLoading = true; this.statusMessage = ''; this.statusError = false;
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.put(`/api/admin/orders/${this.orderId}/status`,
+                    { status: this.selectedStatus },
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+                // Update the local order object to reflect the change instantly
+                this.order.status = response.data.order.status;
+                this.statusMessage = response.data.message;
+                this.statusError = false;
+            } catch (err) {
+                this.statusMessage = err.response?.data?.message || 'Failed to update status.';
+                this.statusError = true;
+            } finally {
+                this.statusLoading = false;
+            }
+        },
+
+        formatPrice: formatPrice,
+    }));
+
+    // 28
+    Alpine.data('adminInnovationsPage', () => ({
+        submissions: [],
+        loading: true,
+        error: '',
+
+        selectedUser: {}, userLoading: false, userProfileModal: null,
+
+        init() {
+            if (Alpine.store('auth').user?.role === 'Admin') this.fetchSubmissions();
+            else this.loading = false;
+            // Initialize the modal instance
+            this.$nextTick(() => { this.userProfileModal = new bootstrap.Modal(document.getElementById('userProfileModal')); });
+        },
+
+        async fetchSubmissions() {
+            this.loading = true;
+            this.error = '';
+            try {
+                const token = Alpine.store('auth').token;
+                const response = await axios.get('/api/admin/innovations', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                this.submissions = response.data;
+            } catch (err) {
+                this.error = 'Failed to load innovation submissions.';
+                console.error(err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async viewUserProfile(userId) {
+            this.userLoading = true;
+            this.userProfileModal.show();
+            try {
+                const token = Alpine.store('auth').token;
+                const res = await axios.get(`/api/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.selectedUser = res.data;
+            } catch (err) { console.error(err); }
+            finally { this.userLoading = false; }
+        }
+    }));
+
+    // 29
+    Alpine.data('adminBusinessInquiriesPage', () => ({
+        inquiries: [], loading: true, error: '', currentPage: 1, totalPages: 1,
+        init() { if (Alpine.store('auth').user?.role === 'Admin') this.fetchInquiries(); },
+        async fetchInquiries(page = 1) {
+            this.loading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const res = await axios.get(`/api/admin/business-inquiries?page=${page}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.inquiries = res.data.inquiries;
+                this.currentPage = res.data.currentPage;
+                this.totalPages = res.data.totalPages;
+            } catch (err) { this.error = 'Failed to load inquiries.'; }
+            finally { this.loading = false; }
+        }
+    }));
+
+    // 30
+    // public/js/main.js
+
+    // --- REPLACE THE ENTIRE adminApplicationsPage COMPONENT ---
+    Alpine.data('adminApplicationsPage', () => ({
+        // State for SBO Applications
+        sboApplications: [],
+        sboLoading: true,
+
+        // State for Business Inquiries
+        businessInquiries: [],
+        inquiryLoading: true,
+        inquiryError: '',
+        inquirySearchTerm: '',
+        inquiryCurrentPage: 1,
+        inquiryTotalPages: 1,
+
+        init() {
+            if (Alpine.store('auth').hasRole('Admin')) {
+                this.fetchSboApplications();
+                this.fetchBusinessInquiries();
+            } else {
+                this.sboLoading = false;
+                this.inquiryLoading = false;
+            }
+        },
+
+        // --- SBO Methods ---
+        async fetchSboApplications() {
+            this.sboLoading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const res = await axios.get('/api/admin/sbo-applications', { headers: { Authorization: `Bearer ${token}` } });
+                this.sboApplications = res.data;
+            } catch (err) { console.error('Failed to fetch SBO apps', err); }
+            finally { this.sboLoading = false; }
+        },
+        async handleSboApplication(profileId, status) {
+            if (!confirm(`Are you sure you want to ${status} this application?`)) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.put(`/api/admin/sbo-applications/${profileId}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+                this.sboApplications = this.sboApplications.filter(app => app.id !== profileId);
+            } catch (err) { alert('Action failed.'); }
+        },
+
+        // --- Business Inquiry Methods ---
+        async fetchBusinessInquiries(page = 1) {
+            this.inquiryLoading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const params = new URLSearchParams({ page, search: this.inquirySearchTerm });
+                const res = await axios.get(`/api/admin/business-inquiries?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+                // Add a temporary 'newStatus' property for the dropdown
+                this.businessInquiries = res.data.inquiries.map(i => ({ ...i, newStatus: i.status }));
+                this.inquiryCurrentPage = res.data.currentPage;
+                this.inquiryTotalPages = res.data.totalPages;
+            } catch (err) { this.inquiryError = 'Failed to load inquiries.'; }
+            finally { this.inquiryLoading = false; }
+        },
+        searchInquiries() {
+            this.fetchBusinessInquiries(1);
+        },
+        async updateInquiryStatus(inquiryId, newStatus) {
+            if (!newStatus) { alert('Please select a status.'); return; }
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.put(`/api/admin/business-inquiries/${inquiryId}/status`, { status: newStatus }, { headers: { Authorization: `Bearer ${token}` } });
+                // Update status locally for instant feedback
+                const inquiry = this.businessInquiries.find(i => i.id === inquiryId);
+                if (inquiry) inquiry.status = newStatus;
+            } catch (err) { alert('Failed to update status.'); }
+        },
+        getInquiryStatusClass(status) {
+            const classes = { pending: 'bg-warning text-dark', contacted: 'bg-info', resolved: 'bg-success', archived: 'bg-secondary' };
+            return classes[status] || 'bg-light text-dark';
+        }
+    }));
 
     //================================================================
     // Initialize the auth store when the app loads

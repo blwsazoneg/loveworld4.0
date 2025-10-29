@@ -10,15 +10,55 @@ const router = express.Router();
 // @access  Private
 router.get('/my-orders', authenticateToken, async (req, res) => {
     const userId = req.user.id;
+    const page = parseInt(req.query.page || '1');
+    const limit = parseInt(req.query.limit || '10');
+    const offset = (page - 1) * limit;
+    const searchTerm = req.query.search || '';
+
     try {
-        const ordersResult = await pool.query(
-            `SELECT id, total_amount, status, created_at 
-             FROM orders 
-             WHERE user_id = $1 
-             ORDER BY created_at DESC`,
-            [userId]
-        );
-        res.status(200).json(ordersResult.rows);
+        // Start building the query and parameters
+        let baseQuery = 'FROM orders WHERE user_id = $1';
+        const queryParams = [userId];
+
+        // Append search conditions if a search term exists
+        if (searchTerm) {
+            if (!isNaN(searchTerm)) {
+                queryParams.push(searchTerm);
+                baseQuery += ` AND id = $${queryParams.length}`;
+            } else {
+                queryParams.push(`${searchTerm}%`);
+                baseQuery += ` AND CAST(created_at AS TEXT) ILIKE $${queryParams.length}`;
+            }
+        }
+
+        // --- THE FIX IS HERE ---
+        // We now build the final queries using the same base
+
+        // 1. Build the query to get the total count
+        const countQuery = `SELECT COUNT(*) ${baseQuery}`;
+        const totalResult = await pool.query(countQuery, queryParams);
+        const totalOrders = parseInt(totalResult.rows[0].count);
+        const totalPages = Math.ceil(totalOrders / limit);
+
+        // 2. Build the main query to get the paginated data
+        // Add the ORDER BY, LIMIT, and OFFSET clauses with correct parameter placeholders
+        queryParams.push(limit);
+        queryParams.push(offset);
+        const mainQuery = `
+            SELECT id, total_amount, status, created_at 
+            ${baseQuery} 
+            ORDER BY created_at DESC 
+            LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}
+        `;
+
+        const ordersResult = await pool.query(mainQuery, queryParams);
+
+        res.status(200).json({
+            orders: ordersResult.rows,
+            currentPage: page,
+            totalPages: totalPages
+        });
+
     } catch (error) {
         console.error('Error fetching user orders:', error);
         res.status(500).json({ message: 'Server error' });

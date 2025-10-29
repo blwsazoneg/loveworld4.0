@@ -1,27 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" x-data>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
+    <title>Edit Product</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business with Espees</title>
-
-    <!-- CRITICAL STYLESHEETS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/global.css">
-    <link rel="stylesheet" href="/css/business.css">
     <link rel="stylesheet" href="/css/modal.css">
-
-    <!-- CRITICAL SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <!-- KingsChat SDK Styles -->
     <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
-
+</head>
 </head>
 
-<body>
-
-    <!-- Navbar Section -->
+<body x-data="adminEditProductPage">
+    <!-- Standard white navbar -->
     <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
         <div class="container-fluid">
             <a class="navbar-brand text-gold" href="/">
@@ -120,13 +113,139 @@
         </div>
     </nav>
 
-    <!-- Sign In/Up Modal (NEW DESIGN) -->
+    <div class="container my-5 pt-5">
+        <div x-show="!$store.auth.hasRole('Admin')">... Access Denied ...
+        </div>
+
+        <div x-show="$store.auth.hasRole('Admin')">
+            <h1 class="mb-4">Edit Product</h1>
+
+            <div x-show="loading" class="text-center py-5">... Loading Spinner ...</div>
+            <div x-show="fetchError" class="alert alert-danger" x-text="fetchError"></div>
+
+            <form @submit.prevent="handleSubmit" class="card p-4" x-show="!loading && !fetchError">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3"><label>Product Name</label><input type="text" class="form-control"
+                                x-model="formData.name" required></div>
+                        <div class="mb-3"><label>Description</label><textarea class="form-control" rows="5"
+                                x-model="formData.description" required></textarea></div>
+                    </div>
+                </div>
+                <div class="row">
+                    <!-- Sector Dropdown -->
+                    <div class="col-md-6 mb-3">
+                        <label for="productSector" class="form-label">Sector</label>
+                        <select class="form-select" id="productSector" x-model="formData.sector_id" required>
+                            <option value="" disabled>Select a Sector</option>
+                            <!-- THE FIX: Loop through the 'sectors' array -->
+                            <template x-for="sector in sectors" :key="sector.id">
+                                <option :value="sector.id" x-text="sector.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Brand Dropdown -->
+                    <div class="col-md-6 mb-3">
+                        <label for="productBrand" class="form-label">Brand</label>
+                        <select class="form-select" id="productBrand" x-model="formData.brand_id" required>
+                            <option value="" disabled>Select a Brand</option>
+                            <!-- THE FIX: Loop through the 'brands' array -->
+                            <template x-for="brand in brands" :key="brand.id">
+                                <option :value="brand.id" x-text="brand.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+                <!-- In both admin-create-product.html and admin-edit-product.html -->
+                <div class="mb-3">
+                    <label class="form-label">Seller (SBO)</label>
+                    <select class="form-select" x-model="formData.sbo_profile_id"
+                        :disabled="$store.auth.user.role === 'SBO'" :required="$store.auth.user.role === 'SBO'">
+                        <!-- THE FIX: Make the 'required' attribute dynamic -->
+                        <option value="">-- No Seller (Platform Owned) --</option>
+                        <template x-for="sbo in sboProfiles" :key="sbo.id">
+                            <option :value="sbo.id" x-text="sbo.company_name"></option>
+                        </template>
+                    </select>
+                    <div class="form-text" x-show="$store.auth.hasRole('Admin')">This is optional. If no seller is
+                        selected, the product will be owned by the platform.</div>
+                </div>
+                <hr>
+                <h5 class="mt-2">Pricing & Stock</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label>Price (USD)</label><input type="number" step="0.01"
+                            class="form-control" x-model="formData.price" required></div>
+                    <div class="col-md-6 mb-3"><label>Sale Price (Optional)</label><input type="number" step="0.01"
+                            class="form-control" x-model="formData.sale_price"></div>
+                    <div class="col-md-6 mb-3"><label>Stock Quantity</label><input type="number" class="form-control"
+                            x-model="formData.stock_quantity" required></div>
+                    <div class="col-md-6 mb-3"><label>Allow Backorders</label><select class="form-select"
+                            x-model="formData.allow_backorder">
+                            <option :value="true">Yes</option>
+                            <option :value="false">No</option>
+                        </select></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label>Sale Start Date (Optional)</label><input type="date"
+                            class="form-control" x-model="sale_start_date_formatted"></div>
+                    <div class="col-md-6 mb-3"><label>Sale End Date (Optional)</label><input type="date"
+                            class="form-control" x-model="sale_end_date_formatted"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label>Status</label><select class="form-select"
+                            x-model="formData.is_active">
+                            <option :value="true">Active</option>
+                            <option :value="false">Inactive</option>
+                        </select></div>
+                </div>
+                <hr>
+                <h5 class="mt-2">Manage Images</h5>
+
+                <!-- Current Images -->
+                <div class="mb-3">
+                    <label class="form-label">Current Images</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <template x-for="image in currentImages" :key="image.id">
+                            <div class="position-relative">
+                                <img :src="image.image_url" class="rounded"
+                                    style="width: 100px; height: 100px; object-fit: cover;">
+                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0"
+                                    @click="deleteImage(image.id)" style="line-height: 1;">
+                                    &times;
+                                </button>
+                            </div>
+                        </template>
+                        <div x-show="currentImages.length === 0" class="text-muted">No images have been uploaded for
+                            this product.</div>
+                    </div>
+                </div>
+
+                <!-- Upload New Images -->
+                <div class="mb-3">
+                    <label for="newImages" class="form-label">Upload Additional Images</label>
+                    <input type="file" class="form-control" id="newImages" @change="handleFileSelect" multiple
+                        name="newImages" accept="image/*">
+                    <div x-show="newFiles.length > 0" class="mt-2 text-success"
+                        x-text="`${newFiles.length} new file(s) selected. Click 'Save Changes' to upload.`"></div>
+                </div>
+                <hr>
+                <div x-show="submitMessage" class="alert" :class="submitError ? 'alert-danger' : 'alert-success'"
+                    x-text="submitMessage"></div>
+                <div class="d-flex justify-content-end">
+                    <a href="/admin-products.html" class="btn btn-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-gold" :disabled="submitLoading">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
         x-data="authModal">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
                 </div>
                 <div class="modal-body">
                     <!-- Login Form View -->
@@ -185,95 +304,10 @@
         </div>
     </div>
 
-    <!-- Hero Section -->
-    <section class="hero-section business-hero text-white d-flex align-items-center justify-content-center text-center">
-        <div class="hero-overlay"></div>
-        <div class="container hero-content">
-            <h1 class="display-4">Business with Espees</h1>
-            <p class="lead my-4">Join our network of innovators and entrepreneurs.</p>
-            <button class="btn btn-lg btn-gold" @click="$refs.contactForm.scrollIntoView({ behavior: 'smooth' })">Get
-                Started</button>
-        </div>
-    </section>
-
-    <!-- Section Two: Read More -->
-    <section class="container my-5 py-5 text-center" x-data="{ showMore: false }">
-        <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <h2 class="fw-bold mb-4">A Partnership for Growth</h2>
-                <p class="lead text-muted">Discover the benefits of partnering with us...</p>
-                <button class="btn btn-outline-gold mt-4" @click="showMore = !showMore"><span
-                        x-text="showMore ? 'Read Less' : 'Read More'"></span></button>
-                <div x-show="showMore" x-collapse>
-                    <div class="extra-content mt-4 text-center">
-                        <p>Our collaborative ecosystem is designed to foster innovation...</p>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-    <!-- Section Three: Business Registration Form -->
-    <section class="contact-form-section py-5" x-ref="contactForm" x-data="businessForm"> <!-- 1. Add x-data -->
-        <div class="container">
-            <div class="form-wrapper">
-                <img src="/images/espees.png" alt="Business Logo" class="business-logo">
-                <div class="form-container">
-                    <p class="form-intro-text">Complete the details below to get started and become a benefits business.
-                    </p>
-
-                    <!-- 2. Add submit handler to the form -->
-                    <form @submit.prevent="handleSubmit">
-                        <!-- Row 1 -->
-                        <div class="form-row">
-                            <label for="businessRegNumber">Business Registration Number:</label>
-                            <!-- 3. Add x-model to inputs -->
-                            <input type="text" class="form-control" id="businessRegNumber" x-model="formData.regNumber">
-                        </div>
-
-                        <!-- Row 2 -->
-                        <div class="form-row">
-                            <label for="registeredName">Registered Business Name:</label>
-                            <input type="text" class="form-control" id="registeredName" x-model="formData.name"
-                                required>
-                        </div>
-
-                        <!-- Row 3 -->
-                        <div class="form-row">
-                            <label for="operatingLocation">Operating Location or HQ:</label>
-                            <input type="text" class="form-control" id="operatingLocation" x-model="formData.location">
-                        </div>
-
-                        <!-- 4. Add a div for server messages -->
-                        <div x-show="message" class="alert mt-4 text-center"
-                            :class="error ? 'alert-danger' : 'alert-success'" x-text="message">
-                        </div>
-
-                        <div class="form-actions">
-                            <!-- 5. Disable button while loading -->
-                            <button type="submit" class="btn btn-gradient-gold px-5" :disabled="loading">
-                                <span x-show="!loading">Submit</span>
-                                <span x-show="loading">Submitting...</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CRITICAL SCRIPTS AT THE END OF BODY -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- This creates window.kingsChatWebSdk -->
     <script src="/vendor/kingschat.bundle.js"></script>
-
-    <!-- This uses window.kingsChatWebSdk -->
     <script src="/js/main.js" type="module"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
 </body>
 
 </html>

@@ -29,12 +29,13 @@
 
             <div class="collapse navbar-collapse" id="shopNavContent">
                 <!-- Main Nav Links (conditionally shown) -->
-                <ul class="navbar-nav mx-auto" x-show="!showSearch" x-transition x-cloak>
-                    <li class="nav-item"><a class="nav-link" href="#">New Releases</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Best Sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Specials</a></li>
-                    <li class="nav-item"><a class="nav-link highlight" href="#">Food</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">FAQ's</a></li>
+                <ul class="navbar-nav mx-auto" x-show="!showSearch" x-transition>
+                    <li class="nav-item"><a class="nav-link" href="/new-releases.html">New Releases</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/best-sellers.html">Best Sellers</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/specials.html">Specials</a></li>
+                    <li class="nav-item"><a class="nav-link highlight"
+                            href="/sector.html?name=Food%20%26%20Beverage">Food</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/faqs.html">FAQ's</a></li>
                 </ul>
 
                 <!-- Search Input (conditionally shown in the middle) -->
@@ -54,45 +55,79 @@
                         <i class="bi" :class="showSearch ? 'bi-x-lg' : 'bi-search'"></i>
                     </a>
 
-                    <!-- Currency Selector Dropdown -->
-                    <!-- <div class="dropdown">
-                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"
-                            aria-expanded="false" x-text="currentCurrency"></a>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
-                            <template x-for="currency in availableCurrencies" :key="currency">
-                                <li><a class="dropdown-item" href="#" @click.prevent="changeCurrency(currency)"
-                                        x-text="currency"></a></li>
-                            </template>
-                        </ul>
-                    </div> -->
 
                     <!-- Login/User Dropdown -->
+                    <!-- In your shop navbar -->
                     <div class="dropdown">
                         <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"><i
                                 class="bi bi-person-circle"></i></a>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-                            <template x-if="!$store.auth.loggedIn">
-                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#signInUpModal">Sign In / Sign Up</a></li>
-                            </template>
-                            <template x-if="$store.auth.loggedIn">
-                                <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
-                                <li><a class="dropdown-item" href="#">Order History</a></li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li><a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
-                                </li>
-                            </template>
+
+                        <!-- ======================================================= -->
+                        <!-- DEFINITIVE DROPDOWN MENU FOR ALPINE v3                  -->
+                        <!-- ======================================================= -->
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-lg-end">
+                            <!-- Logged Out View -->
+                            <li x-show="!$store.auth.loggedIn">
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal">Sign In / Sign Up</a>
+                            </li>
+
+                            <!-- Logged In View -->
+                            <!-- We use x-show on each element that should only appear for logged-in users -->
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="/profile.html">My Profile</a>
+                            </li>
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="/order-history.html">Order History</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <hr class="dropdown-divider">
+                            </li>
+
+                            <!-- Links for SBOs AND Admins -->
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                            </li>
+
+                            <!-- Link for Admins ONLY -->
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                            </li>
+
+                            <li x-show="$store.auth.loggedIn">
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
+                            </li>
                         </ul>
                     </div>
-
+                    <!-- NEW CART ICON -->
                     <a href="/cart.html" class="position-relative">
                         <i class="bi bi-cart"></i>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
                             x-show="$store.cart.itemCount > 0" x-text="$store.cart.itemCount">
                         </span>
                     </a>
+
                 </div>
             </div>
 
@@ -186,34 +221,56 @@
             <div class="col-lg-6 product-info">
                 <p class="product-sector" x-text="product.sector_name || 'Uncategorized'"></p>
                 <h1 class="product-title" x-text="product.name"></h1>
-                <p class="product-price" x-text="formatPrice(product.price)"></p>
 
-                <p class="product-sbo">
-                    Sold by: <strong x-text="product.sbo_username || 'N/A'"></strong>
-                </p>
+                <!-- STOCK STATUS BADGES -->
+                <div>
+                    <span x-show="product.stock_quantity > 0" class="badge bg-success">In Stock</span>
+                    <span x-show="product.stock_quantity <= 0 && product.allow_backorder"
+                        class="badge bg-warning text-dark">Available on Backorder</span>
+                    <span x-show="product.stock_quantity <= 0 && !product.allow_backorder" class="badge bg-danger">Out
+                        of Stock</span>
+                </div>
 
+                <!-- SALE PRICE DISPLAY -->
+                <div class="mt-3">
+                    <!-- If there is an original_price, it means the product is on sale -->
+                    <span x-show="product.original_price" class="text-muted text-decoration-line-through me-2"
+                        x-text="formatPrice(product.original_price)"></span>
+                    <span class="product-price" x-text="formatPrice(product.active_price)"></span>
+                </div>
+
+                <p class="product-sbo">Sold by: <strong x-text="product.sbo_company_name || 'N/A'"></strong></p>
                 <p class="product-description" x-text="product.description"></p>
 
                 <hr class="my-4">
 
-                <!-- Quantity & Add to Cart -->
+                <!-- LOW STOCK WARNING -->
+                <div x-show="product.stock_quantity > 0 && product.stock_quantity < 10" class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Hurry, only <strong x-text="product.stock_quantity"></strong> left in stock!
+                </div>
+
+                <!-- ADD TO CART LOGIC -->
                 <div class="d-flex align-items-center gap-3">
                     <div class="quantity-selector">
-                        <button class="btn btn-outline-secondary" @click="quantity > 1 ? quantity-- : null">-</button>
-                        <input type="number" class="form-control quantity-input" x-model="quantity" min="1">
-                        <button class="btn btn-outline-secondary" @click="quantity++">+</button>
+                        <button class="btn btn-outline-secondary" @click="decrementQuantity()">-</button>
+                        <!-- THE FIX: The input is now read-only to force button usage -->
+                        <input type="text" class="form-control quantity-input" x-model="quantity" readonly>
+                        <button class="btn btn-outline-secondary" @click="incrementQuantity()">+</button>
                     </div>
                     <div class="flex-grow-1">
-                        <button class="btn btn-add-to-cart" @click="addToCart()">
+                        <!-- THE FIX: The button is now disabled based on stock and backorder status -->
+                        <button class="btn btn-add-to-cart" @click="addToCart()"
+                            :disabled="product.stock_quantity <= 0 && !product.allow_backorder">
                             <i class="bi bi-cart-plus me-2"></i>
-                            Add to Cart
+                            <span
+                                x-text="product.stock_quantity <= 0 && !product.allow_backorder ? 'Out of Stock' : 'Add to Cart'"></span>
                         </button>
                     </div>
                 </div>
 
                 <div class="alert mt-3" x-show="cartMessage" :class="cartError ? 'alert-danger' : 'alert-success'"
-                    x-text="cartMessage" x-transition>
-                </div>
+                    x-text="cartMessage" x-transition></div>
             </div>
         </div>
 
@@ -229,15 +286,18 @@
                 </div>
             </div>
         </div>
+
         <!-- Related Products -->
         <div class="col-lg-12 mt-5" x-show="product.related_products && product.related_products.length > 0">
             <h3>Related Products</h3>
             <div class="row row-cols-2 row-cols-lg-4 g-4">
                 <template x-for="related in product.related_products" :key="related.id">
-                    <div class="col">
-                        <a :href="`/product-detail.html?id=${related.id}`" class="grid-product-card">
-                            <img :src="related.main_image_url || '/images/placeholder.png'" alt="Related Product">
-                            <div class="card-body">
+                    <div class="col me-2 rounded" style="border: 1px solid #000;">
+                        <a :href="`/product-detail.html?id=${related.id}`" style="text-decoration: none;"
+                            class="grid-product-card">
+                            <img :src="related.main_image_url || '/images/placeholder.png'" alt="Related Product"
+                                class="img-fluid">
+                            <div class="card-body text-center text-dark">
                                 <h5 class="product-name" x-text="related.name"></h5>
                                 <p class="product-price" x-text="formatPrice(related.price)"></p>
                             </div>

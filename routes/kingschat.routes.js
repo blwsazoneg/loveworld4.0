@@ -19,8 +19,13 @@ router.post('/login', async (req, res) => {
     try {
         const profileResponse = await axios.get(`${KINGSCHAT_API_URL}/api/profile`, { headers: { 'authorization': `Bearer ${accessToken}` } });
         const kcProfile = profileResponse.data.profile;
-        const userResult = await pool.query('SELECT * FROM users WHERE kingschat_id = $1', [kcProfile.id]);
-
+        const userResult = await pool.query(
+            `SELECT u.*, sp.id as sbo_profile_id
+             FROM users u
+             LEFT JOIN sbo_profiles sp ON u.id = sp.user_id
+             WHERE u.kingschat_id = $1`,
+            [kcProfile.id]
+        );
 
         if (userResult.rows.length > 0) {
             const user = userResult.rows[0];
@@ -52,7 +57,7 @@ router.post('/login', async (req, res) => {
                 message: 'Logged in successfully via KingsChat.',
                 token: appToken,
                 user: {
-                    id: updatedUser.id, username: updatedUser.username, email: updatedUser.email, role: updatedUser.role,
+                    id: updatedUser.id, username: updatedUser.username, email: updatedUser.email, role: updatedUser.role, sbo_profile_id: updatedUser.sbo_profile_id,
                     firstName: updatedUser.first_name, lastName: updatedUser.last_name, dateOfBirth: updatedUser.date_of_birth,
                     phoneNumber: updatedUser.phone_number, kingschatHandle: updatedUser.kingschat_handle,
                     kingschatId: updatedUser.kingschat_id, kingschatGender: updatedUser.kingschat_gender,
@@ -155,6 +160,7 @@ router.post('/link', authenticateToken, async (req, res) => {
             username: user.username,
             email: user.email,
             role: user.role,
+            sbo_profile_id: user.sbo_profile_id,
             firstName: user.first_name,
             lastName: user.last_name,
             dateOfBirth: user.date_of_birth,

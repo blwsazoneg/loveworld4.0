@@ -55,41 +55,71 @@
                         <i class="bi" :class="showSearch ? 'bi-x-lg' : 'bi-search'"></i>
                     </a>
 
-                    <!-- Currency Selector Dropdown -->
-                    <!-- <div class="dropdown">
-                        <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"
-                            aria-expanded="false" x-text="currentCurrency"></a>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
-                            <template x-for="currency in availableCurrencies" :key="currency">
-                                <li><a class="dropdown-item" href="#" @click.prevent="changeCurrency(currency)"
-                                        x-text="currency"></a></li>
-                            </template>
-                        </ul>
-                    </div> -->
 
                     <!-- Login/User Dropdown -->
+                    <!-- In your shop navbar -->
                     <div class="dropdown">
                         <a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown"><i
                                 class="bi bi-person-circle"></i></a>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-lg-end ms-4">
-                            <template x-if="!$store.auth.loggedIn">
-                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                        data-bs-target="#signInUpModal">Sign In / Sign Up</a>
-                                </li>
-                                <li><a class="dropdown-item" href="/order-history.html">Order History</a></li>
-                            </template>
-                            <template x-if="$store.auth.loggedIn">
-                                <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
-                                <li><a class="dropdown-item" href="#">Order History</a></li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li><a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
-                                </li>
-                            </template>
+
+                        <!-- ======================================================= -->
+                        <!-- DEFINITIVE DROPDOWN MENU FOR ALPINE v3                  -->
+                        <!-- ======================================================= -->
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-lg-end">
+                            <!-- Logged Out View -->
+                            <li x-show="!$store.auth.loggedIn">
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal">Sign In / Sign Up</a>
+                            </li>
+
+                            <!-- Logged In View -->
+                            <!-- We use x-show on each element that should only appear for logged-in users -->
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="/profile.html">My Profile</a>
+                            </li>
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="/order-history.html">Order History</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <hr class="dropdown-divider">
+                            </li>
+
+                            <!-- Links for SBOs AND Admins -->
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('SBO')">
+                                <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                            </li>
+
+                            <!-- Link for Admins ONLY -->
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                            </li>
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                            </li>
+
+                            <li x-show="$store.auth.loggedIn">
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li x-show="$store.auth.loggedIn">
+                                <a class="dropdown-item" href="#" @click.prevent="$store.auth.logout()">Logout</a>
+                            </li>
                         </ul>
                     </div>
-
                     <!-- NEW CART ICON -->
                     <a href="/cart.html" class="position-relative">
                         <i class="bi bi-cart"></i>
@@ -195,8 +225,8 @@
 
                             <!-- The dynamic image collage -->
                             <div class="hero-image-collage d-none d-md-block">
-                                <!-- Loop through the collage images for THIS slide -->
-                                <template x-for="img in slide.collage_images" :key="img.id">
+                                <template x-for="img in slide.collage_images" :key="`${slide.id}-${img.id}`">
+                                    <!-- THE FIX IS HERE -->
                                     <div class="collage-img"
                                         :style="`top: ${img.top_position}; left: ${img.left_position}; width: ${img.width}; height: ${img.height}; z-index: ${img.z_index};`">
                                         <img :src="img.image_url" alt="Collage Image">
@@ -280,39 +310,10 @@
             </div>
         </div>
 
-        <!-- Dark Carousels (for any sections beyond the first two admin-controlled ones) -->
-        <!-- <template x-for="section in sections.slice(2)" :key="section.id">
-            <section class="dark-carousel-section">
-                <div class="section-header">
-                    <h3 class="section-title" x-text="section.title"></h3>
-                    <div class="carousel-nav d-none d-lg-block">
-                        <a href="#"
-                            @click.prevent="scrollCarousel($event.target.closest('section').querySelector('.horizontal-scroll-container'), -300)"
-                            class="me-2">&larr;</a>
-                        <a href="#"
-                            @click.prevent="scrollCarousel($event.target.closest('section').querySelector('.horizontal-scroll-container'), 300)">&rarr;</a>
-                    </div>
-                </div>
-                <div class="horizontal-scroll-container">
-                    <template x-for="product in section.products" :key="product.id">
-                        <a :href="`/product-detail.html?id=${product.id}`" class="product-cell">
-                            <div class="image-wrapper">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product Image">
-                            </div>
-                            <h5 class="product-name" x-text="product.name"></h5>
-                        </a>
-                    </template>
-                </div>
-            </section>
-        </template> -->
-
+        <!-- Carousel 1 -->
         <section class="dark-carousel-section">
             <div class="section-header">
-                <h3 class="section-title">Shop</h3>
-                <!-- <div class="carousel-nav d-none d-lg-block">
-                    <a href="#" @click.prevent="scrollCarousel($refs.carousel1, -300)" class="me-2">&larr;</a>
-                    <a href="#" @click.prevent="scrollCarousel($refs.carousel1, 300)">&rarr;</a>
-                </div> -->
+                <h3 class="section-title">Featured Categories</h3>
             </div>
             <div class="horizontal-scroll-container" x-ref="carousel1">
                 <template x-for="sector in featuredSectors.slice(0, 5)" :key="sector.id">
@@ -347,6 +348,60 @@
                 </div>
             </div>
         </section>
+
+        <div x-show="!loading && (bestsellers.length > 0 || sections.length > 0)">
+            <!-- The main row that holds our three columns -->
+            <div class="row product-columns-container mx-0">
+
+                <!-- Column 1: AUTOMATIC Weekly Bestsellers -->
+                <div class="col-lg-4 col-md-12 product-column">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title">Weekly Bestsellers</div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in bestsellers" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Column 2 (First admin-controlled section) -->
+                <div class="col-lg-4 col-md-12 product-column has-border">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[0]?.title || 'Featured'"></div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Column 3 (Second admin-controlled section) -->
+                <div class="col-lg-4 col-md-12 product-column">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[1]?.title || 'New Arrivals'"></div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Carousel 3 -->
         <section class="dark-carousel-section">
@@ -384,6 +439,60 @@
             </div>
         </section>
 
+        <div x-show="!loading && (bestsellers.length > 0 || sections.length > 0)">
+            <!-- The main row that holds our three columns -->
+            <div class="row product-columns-container mx-0">
+
+                <!-- Column 1: AUTOMATIC Weekly Bestsellers -->
+                <div class="col-lg-4 col-md-12 product-column">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title">Weekly Bestsellers</div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in bestsellers" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Column 2 (First admin-controlled section) -->
+                <div class="col-lg-4 col-md-12 product-column has-border">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[0]?.title || 'Featured'"></div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Column 3 (Second admin-controlled section) -->
+                <div class="col-lg-4 col-md-12 product-column">
+                    <!-- Title is INSIDE the column -->
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[1]?.title || 'New Arrivals'"></div>
+                    </div>
+                    <!-- The products for this column -->
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Carousel 5 -->
         <section class="dark-carousel-section">
             <div class="horizontal-scroll-container" x-ref="carousel5">
@@ -402,6 +511,68 @@
                 </div>
             </div>
         </section>
+
+        <!-- Carousel 6 -->
+        <!-- <section class="dark-carousel-section">
+            <div class="horizontal-scroll-container" x-ref="carousel6">
+                <template x-for="sector in featuredSectors.slice(25, 30)" :key="sector.id">
+                    <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
+                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <h5 class="product-name" x-text="sector.name"></h5>
+                    </a>
+                </template>
+            </div>
+            <div class="section-header">
+                <div class="carousel-nav d-none d-lg-block">
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel6, -300)" class="me-2">&larr;</a>
+                    <a href="#" @click.prevent="scrollCarousel($refs.carousel6, 300)">&rarr;</a>
+                </div>
+            </div>
+        </section>
+
+        <div x-show="!loading && (bestsellers.length > 0 || sections.length > 0)">
+            <div class="row product-columns-container mx-0">
+
+                <div class="col-lg-4 col-md-12 product-column">
+                    <div class="section-tabs-bar">
+                        <div class="tab-title">Weekly Bestsellers</div>
+                    </div>
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in bestsellers" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-12 product-column has-border">
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[0]?.title || 'Featured'"></div>
+                    </div>
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-12 product-column">
+                    <div class="section-tabs-bar">
+                        <div class="tab-title" x-text="sections[1]?.title || 'New Arrivals'"></div>
+                    </div>
+                    <div class="inner-product-grid mt-3">
+                        <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
+                            <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
+                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                            </a>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div> -->
 
     </main>
 

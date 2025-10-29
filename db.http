@@ -1,0 +1,8 @@
+###
+GET http://localhost:3000/api/admin/users/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6IkFkbWluIiwiaWF0IjoxNzYxNzY0NjAzLCJleHAiOjE3NjE4MDA2MDN9.zrC3rhv-RC-pQkV42fssAZTvYf1FRCTrh16a9zxH34s
+
+###
+
+GET http://localhost:3000/api/admin/orders?1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6IkFkbWluIiwiaWF0IjoxNzYxNzY0NjAzLCJleHAiOjE3NjE4MDA2MDN9.zrC3rhv-RC-pQkV42fssAZTvYf1FRCTrh16a9zxH34s

@@ -292,7 +292,7 @@ router.get('/:id/applicants', authenticateToken, checkRole(['SBO', 'Admin']), as
             `SELECT
                 u.id, u.first_name, u.last_name, u.username, u.email, u.phone_number,
                 u.zone, u.church, u.ministry_position, u.kingschat_handle,
-                ja.application_date
+                ja.application_date, ja.applicant_user_id
              FROM job_applications ja
              JOIN users u ON ja.applicant_user_id = u.id
              WHERE ja.job_post_id = $1

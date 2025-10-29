@@ -7,14 +7,13 @@
     <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/global.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 
 <body x-data="{
     protectAdminRoute() {
         this.$nextTick(() => {
-            if (!$store.auth.loggedIn || $store.auth.user.role !== 'Admin') {
+            if (!$store.auth.loggedIn || !$store.auth.hasRole('Admin')) {
                 window.location.href = '/information.html'; // Redirect non-admins
             }
         });
@@ -26,6 +25,7 @@
             <a class="navbar-brand text-gold" href="/">
                 <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
                 <b>LW 4.0</b>
+
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,9 @@
                                 <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
                                     data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
                                     In</button>
+
                                 <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+
                             </div>
                         </template>
 
@@ -70,6 +72,38 @@
                                     x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <hr class="dropdown-divider">
+                                    </li>
+
+                                    <!-- Links for SBOs AND Admins -->
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                                    </li>
+
+                                    <!-- Link for Admins ONLY -->
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                                    </li>
+                                                                        <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                                    </li>
+
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -81,24 +115,38 @@
                     </div>
                 </ul>
             </div>
-
         </div>
     </nav>
 
     <!-- Main Content -->
+    <!-- In public/admin-dashboard.html -->
     <div class="container my-5 pt-5" x-data="adminDashboard">
         <h1 class="mb-4">User Management</h1>
 
+        <!-- ADD THE SEARCH BAR -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <form @submit.prevent="searchUsers">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search by username, email, or name..."
+                            x-model="searchTerm">
+                        <button class="btn btn-outline-secondary" type="submit">Search</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Server Message -->
         <div x-show="message" class="alert" :class="error ? 'alert-danger' : 'alert-success'" x-text="message"></div>
-
         <!-- Loading Spinner -->
-        <div x-show="loading" class="text-center py-5">
-            <div class="spinner-border text-gold" role="status"></div>
+        <div x-show="loading" class="text-center py-5">...</div>
+        <!-- No Users Message -->
+        <div x-show="!loading && users.length === 0" class="text-center p-4 bg-light rounded">
+            <h4>No users found.</h4>
         </div>
 
         <!-- User List Table -->
-        <div x-show="!loading" class="card">
+        <div x-show="!loading && users.length > 0" class="card">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
@@ -115,20 +163,45 @@
                                 <td x-text="user.username"></td>
                                 <td x-text="user.email"></td>
                                 <td>
-                                    <span class="badge"
-                                        :class="{ 'bg-primary': user.role === 'Admin', 'bg-success': user.role === 'SBO', 'bg-secondary': user.role === 'User' }"
-                                        x-text="user.role">
+                                    <span class="badge" :class="{ 
+        'bg-danger': user.role === 'Superadmin', 
+        'bg-primary': user.role === 'Admin', 
+        'bg-success': user.role === 'SBO', 
+        'bg-secondary': user.role === 'User' 
+    }" x-text="user.role">
                                     </span>
                                 </td>
                                 <td class="text-end">
-                                    <!-- Only show promote button if user is NOT already an Admin -->
-                                    <template x-if="user.role !== 'Admin'">
-                                        <button class="btn btn-sm btn-outline-primary"
-                                            @click="changeRole(user.id, 'Admin')">
-                                            Promote to Admin
-                                        </button>
-                                    </template>
-                                    <!-- You could add demote buttons here as well -->
+                                    <!-- Main condition: Never show actions for the Superadmin (ID 1) or for oneself -->
+                                    <div class="dropdown"
+                                        x-show="user.id !== 'Superadmin' && user.id !== $store.auth.user.id">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown">Change Role</button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li
+                                                x-show="$store.auth.user.role === 'Superadmin' && user.role !== 'Admin'">
+                                                <a class="dropdown-item" href="#"
+                                                    @click.prevent="changeRole(user.id, 'Admin')">Set as Admin</a>
+                                            </li>
+                                            <!-- Show these actions if the user's role is 'User' -->
+                                            <!-- <li x-show="user.role === 'User'"><a class="dropdown-item" href="#"
+                                                    @click.prevent="changeRole(user.id, 'Admin')">Set as Admin</a></li> -->
+                                            <li x-show="user.role === 'User'"><a class="dropdown-item" href="#"
+                                                    @click.prevent="changeRole(user.id, 'SBO')">Set as SBO</a></li>
+
+                                            <!-- Show these actions if the user's role is 'SBO' -->
+                                            <li x-show="user.role === 'SBO'"><a class="dropdown-item" href="#"
+                                                    @click.prevent="changeRole(user.id, 'Admin')">Set as Admin</a></li>
+                                            <li x-show="user.role === 'SBO'"><a class="dropdown-item" href="#"
+                                                    @click.prevent="changeRole(user.id, 'User')">Demote to User</a></li>
+
+                                            <!-- Show these actions if the user's role is 'Admin' -->
+                                            <li x-show="user.role === 'Admin'"><a class="dropdown-item" href="#"
+                                                    @click.prevent="changeRole(user.id, 'SBO')">Demote to SBO</a></li>
+                                            <li x-show="user.role === 'Admin'"><a class="dropdown-item" href="#"
+                                                    @click.prevent="changeRole(user.id, 'User')">Demote to User</a></li>
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
@@ -136,10 +209,29 @@
                 </table>
             </div>
         </div>
+
+        <!-- ADD PAGINATION -->
+        <nav x-show="totalPages > 1" class="mt-4 d-flex justify-content-center">
+            <ul class="pagination">
+                <li class="page-item" :class="{ 'disabled': currentPage === 1 }">
+                    <a class="page-link" href="#" @click.prevent="fetchAllUsers(currentPage - 1)">Previous</a>
+                </li>
+                <template x-for="page in Array.from({ length: totalPages }, (_, i) => i + 1)">
+                    <li class="page-item" :class="{ 'active': page === currentPage }">
+                        <a class="page-link" href="#" @click.prevent="fetchAllUsers(page)" x-text="page"></a>
+                    </li>
+                </template>
+                <li class="page-item" :class="{ 'disabled': currentPage === totalPages }">
+                    <a class="page-link" href="#" @click.prevent="fetchAllUsers(currentPage + 1)">Next</a>
+                </li>
+            </ul>
+        </nav>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/main.js" type="module"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
 </body>
 
 </html>

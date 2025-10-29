@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Site Content</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/global.css">
+    <link rel="stylesheet" href="/css/modal.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+</head>
+
+<body x-data="adminContentPage">
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
+        <div class="container-fluid">
+            <a class="navbar-brand text-gold" href="/">
+                <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
+                <b>LW 4.0</b>
+
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link text-gold active" aria-current="page" href="/information.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/shop.html">Shop</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/explore.html">Explore</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/placements.html">Placements</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/innovate.html">Innovate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-gold" href="/about.html">About</a>
+                    </li>
+                    <div class="d-flex align-items-center" x-data x-cloak>
+                        <!-- Show these buttons if user is NOT logged in -->
+                        <template x-if="!$store.auth.loggedIn">
+                            <div class="d-flex">
+                                <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
+                                    data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
+                                    In</button>
+
+                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
+
+                            </div>
+                        </template>
+
+                        <!-- Show this dropdown if user IS logged in -->
+                        <template x-if="$store.auth.loggedIn">
+                            <div class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle text-gold" role="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    x-text="`Welcome, ${$store.auth.user.firstName}`"></a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/profile.html">My Profile</a></li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <hr class="dropdown-divider">
+                                    </li>
+
+                                    <!-- Links for SBOs AND Admins -->
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-products.html">Manage Products</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/manage-jobs.html">Manage Placements</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('SBO')">
+                                        <a class="dropdown-item" href="/admin-orders.html">Manage Orders</a>
+                                    </li>
+
+                                    <!-- Link for Admins ONLY -->
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-dashboard.html">User Management</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-categories.html">Manage Categories</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-content.html">Manage Homepage</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-innovations.html">View Innovations</a>
+                                    </li>
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
+                                    </li>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li><a class="dropdown-item" href="#"
+                                            @click.prevent="$store.auth.logout()">Logout</a></li>
+                                </ul>
+                            </div>
+                        </template>
+                    </div>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5 pt-5" x-data="adminContentPage">
+        <!-- Access Denied Message -->
+        <div x-show="!$store.auth.hasRole('Admin')" class="alert alert-danger">
+            Access Denied. You must be an Administrator to view this page.
+        </div>
+
+        <!-- Main Admin Content -->
+        <div x-show="$store.auth.hasRole('Admin')">
+            <h1 class="mb-4">Manage Homepage Content</h1>
+
+            <!-- ======================================================= -->
+            <!-- CARD 1: HERO SLIDE MANAGEMENT (WITH INLINE EDITING)     -->
+            <!-- ======================================================= -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Hero Carousel Slides</h3>
+                </div>
+                <div class="card-body">
+                    <div x-show="loading" class="text-center p-4">Loading Slides...</div>
+
+                    <template x-for="(slide, slideIndex) in slides" :key="slide.id">
+                        <div class="border p-3 mb-3 rounded bg-light">
+
+                            <!-- VIEW MODE for slide -->
+                            <div x-show="editingSlideId !== slide.id" x-transition>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span><strong x-text="slide.title_text || 'Untitled'"></strong> <em
+                                            class="text-muted"
+                                            x-text="slide.is_active ? '(Active)' : '(Inactive)'"></em></span>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary"
+                                            @click="editingSlideId = slide.id">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger ms-2"
+                                            @click="deleteSlide(slide.id)">Delete Slide</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- EDIT MODE for slide -->
+                            <div x-show="editingSlideId === slide.id" x-transition>
+                                <h6>Edit Slide Details</h6>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-4"><label class="small">Title</label><input type="text"
+                                            class="form-control form-control-sm" x-model="slide.title_text"></div>
+                                    <div class="col-md-4"><label class="small">Subtitle</label><input type="text"
+                                            class="form-control form-control-sm" x-model="slide.subtitle_text"></div>
+                                    <div class="col-md-1"><label class="small">Order</label><input type="number"
+                                            class="form-control form-control-sm" x-model.number="slide.display_order">
+                                    </div>
+                                    <div class="col-md-3"><label class="small">Status</label><select
+                                            class="form-select form-select-sm" x-model="slide.is_active">
+                                            <option :value="true">Active</option>
+                                            <option :value="false">Inactive</option>
+                                        </select></div>
+                                    <div class="col-12 text-end mt-2">
+                                        <button class="btn btn-sm btn-secondary me-2"
+                                            @click="editingSlideId = null; fetchSlides();">Cancel</button>
+                                        <button class="btn btn-sm btn-success" @click="saveSlide(slide)">Save
+                                            Changes</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <!-- Collage image manager (visible in both modes) -->
+                            <h6>Collage Images</h6>
+                            <div class="d-flex flex-wrap gap-3 mb-3">
+                                <template x-for="img in slide.collage_images" :key="img.id">
+                                    <div class="position-relative">
+                                        <img :src="img.image_url"
+                                            style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;">
+                                        <button @click="deleteCollageImage(img.id, slideIndex)"
+                                            class="btn btn-sm btn-danger rounded-circle position-absolute top-0 end-0"
+                                            style="transform: translate(50%, -50%);">&times;</button>
+                                    </div>
+                                </template>
+                            </div>
+                            <form @submit.prevent="addCollageImage(slide.id, slideIndex)" class="border-top pt-3">
+                                <h6 class="small mb-3">Add New Collage Image</h6>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-4"><label class="form-label small">Image File</label><input
+                                            type="file" class="form-control form-control-sm" required
+                                            :id="`collage_file_${slide.id}`"></div>
+                                    <div class="col-md-2"><label class="form-label small">Width</label><input
+                                            type="text" class="form-control form-control-sm" placeholder="150px"
+                                            :id="`collage_width_${slide.id}`"></div>
+                                    <div class="col-md-2"><label class="form-label small">Height</label><input
+                                            type="text" class="form-control form-control-sm" placeholder="180px"
+                                            :id="`collage_height_${slide.id}`"></div>
+                                    <div class="col-md-2"><label class="form-label small">Top</label><input type="text"
+                                            class="form-control form-control-sm" placeholder="20%"
+                                            :id="`collage_top_${slide.id}`"></div>
+                                    <div class="col-md-2"><label class="form-label small">Left</label><input type="text"
+                                            class="form-control form-control-sm" placeholder="80%"
+                                            :id="`collage_left_${slide.id}`"></div>
+                                    <div class="col-12 mt-2"><button type="submit" class="btn btn-sm btn-secondary">Add
+                                            Image</button></div>
+                                </div>
+                            </form>
+                        </div>
+                    </template>
+
+                    <!-- Form to Add a New Slide -->
+                    <form @submit.prevent="addSlide" class="mt-4 border-top pt-4">
+                        <h5 class="mb-3">Add New Hero Slide</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label>Title Text</label><input type="text" class="form-control"
+                                    x-model="newSlide.title_text" required></div>
+                            <div class="col-md-6 mb-3"><label>Subtitle Text</label><input type="text"
+                                    class="form-control" x-model="newSlide.subtitle_text"></div>
+                            <div class="col-md-6 mb-3"><label>Background Image</label><input type="file"
+                                    class="form-control"
+                                    @change="newSlide.background_image_url_file = $event.target.files[0]" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-gold">Create New Slide</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ======================================================= -->
+            <!-- CARD 2: SHOP SECTION MANAGEMENT (WITH INLINE EDITING)   -->
+            <!-- ======================================================= -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3>Shop Sections</h3>
+                </div>
+                <div class="card-body">
+                    <h6>Current Sections</h6>
+                    <ul class="list-group mb-4">
+                        <template x-for="section in shopSections" :key="section.id">
+                            <li class="list-group-item">
+                                <!-- VIEW MODE for section -->
+                                <div x-show="editingSectionId !== section.id" x-transition
+                                    class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="fw-bold" x-text="section.title"></span>
+                                        <small class="text-muted d-block"
+                                            x-text="`Type: ${section.type} | Order: ${section.display_order}`"></small>
+                                    </div>
+                                    <div>
+                                        <a :href="`/admin-manage-section.html?id=${section.id}`"
+                                            class="btn btn-sm btn-outline-info">Manage Products</a>
+                                        <button class="btn btn-sm btn-outline-primary mx-2"
+                                            @click="editingSectionId = section.id">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                            @click="deleteShopSection(section.id)">&times;</button>
+                                    </div>
+                                </div>
+                                <!-- EDIT MODE for section -->
+                                <div x-show="editingSectionId === section.id" x-transition>
+                                    <h6>Edit Section Details</h6>
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-3"><label class="small">Title</label><input type="text"
+                                                class="form-control form-control-sm" x-model="section.title"></div>
+                                        <div class="col-md-2"><label class="small">Type</label><select
+                                                class="form-select form-select-sm" x-model="section.type">
+                                                <option value="grid">Grid</option>
+                                                <option value="carousel">Carousel</option>
+                                            </select></div>
+                                        <div class="col-md-1"><label class="small">Order</label><input type="number"
+                                                class="form-control form-control-sm"
+                                                x-model.number="section.display_order"></div>
+                                        <div class="col-md-2"><label class="small">Start Date</label><input type="date"
+                                                class="form-control form-control-sm"
+                                                :value="section.start_date?.split('T')[0]"
+                                                @input="section.start_date = $event.target.value"></div>
+                                        <div class="col-md-2"><label class="small">End Date</label><input type="date"
+                                                class="form-control form-control-sm"
+                                                :value="section.end_date?.split('T')[0]"
+                                                @input="section.end_date = $event.target.value"></div>
+                                        <div class="col-md-2 text-end">
+                                            <button class="btn btn-sm btn-secondary me-2"
+                                                @click="editingSectionId = null; fetchAllContent();">Cancel</button>
+                                            <button class="btn btn-sm btn-success"
+                                                @click="saveSection(section)">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+                    <!-- Form to Add a New Section (unchanged) -->
+                    <form @submit.prevent="addShopSection" class="mt-4 border-top pt-4">
+                        <h5 class="mb-3">Add New Shop Section</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label>Title</label><input type="text" class="form-control"
+                                    x-model="newSection.title" required></div>
+                            <div class="col-md-6 mb-3"><label>Layout Type</label><select class="form-select"
+                                    x-model="newSection.type" required>
+                                    <option value="grid">3-Column Grid</option>
+                                    <option value="carousel">Dark Horizontal Carousel</option>
+                                </select></div>
+                            <div class="col-md-6 mb-3"><label>Display Order</label><input type="number"
+                                    class="form-control" x-model.number="newSection.display_order"></div>
+                            <div class="col-md-6 mb-3"><label>Status</label><select class="form-select"
+                                    x-model="newSection.is_active">
+                                    <option :value="true">Active</option>
+                                    <option :value="false">Inactive</option>
+                                </select></div>
+                            <div class="col-md-6 mb-3"><label>Start Date (Optional)</label><input type="date"
+                                    class="form-control" x-model="newSection.start_date"></div>
+                            <div class="col-md-6 mb-3"><label>End Date (Optional)</label><input type="date"
+                                    class="form-control" x-model="newSection.end_date"></div>
+                        </div>
+                        <button type="submit" class="btn btn-gold">Create New Section</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- NEW: MANAGE SECTION PRODUCTS MODAL                      -->
+    <!-- ======================================================= -->
+    <div class="modal fade" id="manageProductsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Products for "<span x-text="activeSection.title"></span>"</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Products Currently in this Section</h6>
+                    <ul class="list-group mb-4">
+                        <template x-for="product in activeSection.products" :key="product.id">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span x-text="product.name"></span>
+                                <button class="btn btn-sm btn-outline-danger"
+                                    @click="removeProductFromSection(product.id)">&times;</button>
+                            </li>
+                        </template>
+                        <li x-show="!activeSection.products || activeSection.products.length === 0"
+                            class="list-group-item text-muted">No products have been added to this section yet.</li>
+                    </ul>
+
+                    <h6>Add a Product to this Section</h6>
+                    <div class="input-group">
+                        <select class="form-select" x-model="productToAdd">
+                            <option value="">Select a product to add...</option>
+                            <template x-for="product in allProducts" :key="product.id">
+                                <option :value="product.id" x-text="product.name"></option>
+                            </template>
+                        </select>
+                        <button class="btn btn-gold" @click="addProductToSection()">Add Product</button>
+                    </div>
+                    <div x-show="modalMessage" class="alert mt-2 py-1"
+                        :class="modalError ? 'alert-danger' : 'alert-success'" x-text="modalMessage"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/kingschat.bundle.js"></script>
+    <script src="/js/main.js" type="module"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+
+</html>
