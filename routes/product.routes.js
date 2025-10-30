@@ -389,6 +389,53 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// routes/product.routes.js
+
+// --- ADD THESE NEW ROUTES ---
+
+// @route   GET /api/products/list/new-releases
+// @desc    Get the most recently added products
+// @access  Public
+router.get('/list/new-releases', async (req, res) => {
+    try {
+        const products = await pool.query(
+            `SELECT p.id, p.name, p.price, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url FROM products p WHERE p.is_active = true ORDER BY p.created_at DESC LIMIT 20`
+        );
+        res.status(200).json(products.rows);
+    } catch (error) { res.status(500).json({ message: 'Server error' }); }
+});
+
+// @route   GET /api/products/list/best-sellers
+// @desc    Get the all-time best-selling products
+// @access  Public
+router.get('/list/best-sellers', async (req, res) => {
+    try {
+        const products = await pool.query(
+            `SELECT p.id, p.name, p.price, SUM(oi.quantity) as total_sold, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
+             FROM products p JOIN order_items oi ON p.id = oi.product_id
+             WHERE p.is_active = true GROUP BY p.id ORDER BY total_sold DESC LIMIT 20`
+        );
+        res.status(200).json(products.rows);
+    } catch (error) { res.status(500).json({ message: 'Server error' }); }
+});
+
+// @route   GET /api/products/list/specials
+// @desc    Get all products currently on sale
+// @access  Public
+router.get('/list/specials', async (req, res) => {
+    try {
+        const products = await pool.query(
+            `SELECT p.id, p.name, p.price, p.sale_price as active_price, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
+             FROM products p
+             WHERE p.is_active = true AND p.sale_price IS NOT NULL
+             AND (p.sale_start_date IS NULL OR p.sale_start_date <= NOW())
+             AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW())
+             ORDER BY p.created_at DESC LIMIT 20`
+        );
+        res.status(200).json(products.rows);
+    } catch (error) { res.status(500).json({ message: 'Server error' }); }
+});
+
 // (You would add similar CRUD endpoints for Brands, Hero Slides, and Shop Sections)
 
 

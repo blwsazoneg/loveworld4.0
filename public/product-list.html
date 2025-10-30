@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frequently Asked Questions | Made in Loveworld</title>
+
+    <title x-data="{ title: new URLSearchParams(window.location.search).get('title') }"
+        x-text="`${title || 'Products'} | Made in Loveworld`"></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/fonts.css">
@@ -15,8 +17,8 @@
     <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
 </head>
 
-<body class="shop-page" x-data="shopPage"> <!-- Re-use shopPage for navbar logic -->
-
+<body class="shop-page" x-data="productListPage">
+    <!-- Shop Navbar -->
     <nav class="navbar navbar-expand-lg navbar-shop fixed-top">
         <div class="container-fluid">
             <a class="navbar-brand text-white" href="/shop.html">Made in Loveworld</a>
@@ -136,6 +138,26 @@
 
         </div>
     </nav>
+    <div class="container my-5 pt-5">
+        <h1 class="mb-4 display-4 fw-bold" x-text="pageTitle"></h1>
+        <div x-show="loading" class="text-center py-5">...</div>
+        <div x-show="!loading && products.length === 0" class="text-center p-5">
+            <h4>No products found.</h4>
+        </div>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+            <template x-for="product in products" :key="product.id">
+                <div class="col">
+                    <a :href="`/product-detail.html?id=${product.id}`" class="grid-product-card">
+                        <img :src="product.main_image_url || '/images/placeholder.png'" class="card-img-top">
+                        <div class="card-body">
+                            <h5 class="product-name" x-text="product.name"></h5>
+                            <p class="product-price" x-text="formatPrice(product.active_price || product.price)"></p>
+                        </div>
+                    </a>
+                </div>
+            </template>
+        </div>
+    </div>
 
     <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
         x-data="authModal">
@@ -201,79 +223,11 @@
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="container my-5 pt-5">
-        <h1 class="display-4 fw-bold mb-5 text-center">Frequently Asked Questions</h1>
-
-        <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <div class="accordion" id="faqAccordion">
-                    <!-- FAQ Item 1: Orders -->
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#collapseOne">
-                                How do I track my order?
-                            </button>
-                        </h2>
-                        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
-                            <div class="accordion-body">
-                                You can view your complete order history and the status of each order by logging into
-                                your account and visiting the <strong>"Order History"</strong> page, which is accessible
-                                from the user dropdown menu in the top-right corner. The status will update from "Paid"
-                                to "Shipped" once your order is on its way.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- FAQ Item 2: Payments -->
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#collapseTwo">
-                                What payment methods do you accept?
-                            </button>
-                        </h2>
-                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                            <div class="accordion-body">
-                                We process all payments securely through Stripe. You can use any major credit or debit
-                                card, including Visa, Mastercard, and American Express. All transactions are encrypted
-                                and handled on Stripe's secure payment page.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- FAQ Item 3: SBOs -->
-                    <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                data-bs-target="#collapseThree">
-                                How can I become a seller (SBO) on this platform?
-                            </button>
-                        </h2>
-                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                            <div class="accordion-body">
-                                To become a seller, you must first create a user account. Once you are logged in,
-                                navigate to your <strong>"My Profile"</strong> page. There you will find a "Become a
-                                Seller" form. Fill out your company details and submit the application. Our admin team
-                                will review it, and upon approval, your account will be upgraded to an SBO, allowing you
-                                to list products.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Add more FAQ items as needed -->
-
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/kingschat.bundle.js"></script>
     <script src="/js/main.js" type="module"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
 </body>
 
 </html>

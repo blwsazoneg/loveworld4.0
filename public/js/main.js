@@ -1088,7 +1088,10 @@ document.addEventListener('alpine:init', () => {
                 this.bestsellers = bestsellersRes.data;
                 this.sections = sectionsRes.data;
                 this.featuredSectors = featuredSectorsRes.data;
-
+                window.addEventListener('content-updated', () => {
+                    console.log('Content updated event received. Re-fetching shop data.');
+                    this.fetchPageContent();
+                });
             } catch (error) {
                 console.error("Failed to load shop content:", error);
             } finally {
@@ -1789,10 +1792,23 @@ document.addEventListener('alpine:init', () => {
         brandFormLoading: false,
 
         init() {
-            if (Alpine.store('auth').user?.role === 'Admin') {
+            // THE FIX: Use the hasRole() helper to check for permissions.
+            // This will correctly return 'true' for both Admins and Superadmins.
+            if (Alpine.store('auth').hasRole('Admin')) {
                 this.fetchCategories();
+            } else {
+                // Also good practice to stop the loading spinner if the user is not authorized.
+                this.loading = false;
             }
+
+            // We can also add a watcher for robustness, in case the user logs in on this page.
+            this.$watch('$store.auth.loggedIn', (isLoggedIn) => {
+                if (isLoggedIn && Alpine.store('auth').hasRole('Admin')) {
+                    this.fetchCategories();
+                }
+            });
         },
+
         async fetchCategories() {
             this.loading = true;
             try {
@@ -1843,6 +1859,7 @@ document.addEventListener('alpine:init', () => {
                 // Reset the form object and clear file inputs if needed
                 this.newSector = { name: '', image_url_file: null, hero_image_url_file: null, is_featured: false };
                 this.sectorMessage = 'Sector added!';
+                window.dispatchEvent(new CustomEvent('content-updated'));
 
             } catch (err) {
                 this.sectorError = true;
@@ -1853,14 +1870,17 @@ document.addEventListener('alpine:init', () => {
         },
 
         async deleteSector(sectorId) {
-            if (!confirm('Are you sure? Deleting a sector will un-categorize its products.')) return;
+            if (!confirm('Are you sure? This will un-categorize its products.')) return;
             try {
                 const token = Alpine.store('auth').token;
                 await axios.delete(`/api/admin/sectors/${sectorId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                this.sectors = this.sectors.filter(s => s.id !== sectorId); // Remove from list instantly
+
+                // THE FIX: Use '==' for loose comparison to handle "26" == 26
+                // Or, even better, coerce both to numbers for a strict, reliable comparison.
+                this.sectors = this.sectors.filter(s => Number(s.id) !== Number(sectorId));
+
             } catch (err) { alert('Failed to delete sector.'); }
         },
-
         // --- Brand Methods ---
         async addBrand() {
             this.brandMessage = '';
@@ -1877,6 +1897,8 @@ document.addEventListener('alpine:init', () => {
                 this.newBrandName = '';
                 this.brandError = false;
                 this.brandMessage = 'Brand added!';
+                window.dispatchEvent(new CustomEvent('content-updated'));
+
             } catch (err) {
                 this.brandError = true;
                 this.brandMessage = err.response?.data?.message || 'Failed to add brand.';
@@ -1884,12 +1906,16 @@ document.addEventListener('alpine:init', () => {
                 this.brandFormLoading = false;
             }
         },
+
         async deleteBrand(brandId) {
-            if (!confirm('Are you sure? Deleting a brand will un-categorize its products.')) return;
+            if (!confirm('Are you sure? This will un-categorize its products.')) return;
             try {
                 const token = Alpine.store('auth').token;
                 await axios.delete(`/api/admin/brands/${brandId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                this.brands = this.brands.filter(b => b.id !== brandId);
+
+                // THE FIX: Apply the same robust comparison here.
+                this.brands = this.brands.filter(b => Number(b.id) !== Number(brandId));
+
             } catch (err) { alert('Failed to delete brand.'); }
         }
     }));
@@ -2282,12 +2308,27 @@ document.addEventListener('alpine:init', () => {
         loading: true,
         error: '',
 
-        selectedUser: {}, userLoading: false, userProfileModal: null,
+        selectedUser: {},
+        userLoading: false,
+        userProfileModal: null,
 
         init() {
-            if (Alpine.store('auth').user?.role === 'Admin') this.fetchSubmissions();
-            else this.loading = false;
-            // Initialize the modal instance
+            // THE FIX: Use the hasRole() helper to check for permissions.
+            // This will correctly return 'true' for both Admins and Superadmins.
+            if (Alpine.store('auth').hasRole('Admin')) {
+                this.fetchSubmissions();
+            } else {
+                // Also good practice to stop the loading spinner if the user is not authorized.
+                this.loading = false;
+            }
+
+            // We can also add a watcher for robustness, in case the user logs in on this page.
+            this.$watch('$store.auth.loggedIn', (isLoggedIn) => {
+                if (isLoggedIn && Alpine.store('auth').hasRole('Admin')) {
+                    this.fetchSubmissions();
+                }
+            });
+
             this.$nextTick(() => { this.userProfileModal = new bootstrap.Modal(document.getElementById('userProfileModal')); });
         },
 
@@ -2323,7 +2364,24 @@ document.addEventListener('alpine:init', () => {
     // 29
     Alpine.data('adminBusinessInquiriesPage', () => ({
         inquiries: [], loading: true, error: '', currentPage: 1, totalPages: 1,
-        init() { if (Alpine.store('auth').user?.role === 'Admin') this.fetchInquiries(); },
+        init() {
+            // THE FIX: Use the hasRole() helper to check for permissions.
+            // This will correctly return 'true' for both Admins and Superadmins.
+            if (Alpine.store('auth').hasRole('Admin')) {
+                this.fetchInquiries();
+            } else {
+                // Also good practice to stop the loading spinner if the user is not authorized.
+                this.loading = false;
+            }
+
+            // We can also add a watcher for robustness, in case the user logs in on this page.
+            this.$watch('$store.auth.loggedIn', (isLoggedIn) => {
+                if (isLoggedIn && Alpine.store('auth').hasRole('Admin')) {
+                    this.fetchInquiries();
+                }
+            });
+        },
+
         async fetchInquiries(page = 1) {
             this.loading = true;
             try {
@@ -2413,6 +2471,41 @@ document.addEventListener('alpine:init', () => {
         getInquiryStatusClass(status) {
             const classes = { pending: 'bg-warning text-dark', contacted: 'bg-info', resolved: 'bg-success', archived: 'bg-secondary' };
             return classes[status] || 'bg-light text-dark';
+        }
+    }));
+
+    // 31
+    // public/js/main.js
+    Alpine.data('productListPage', () => ({
+        products: [],
+        loading: true,
+        pageTitle: '',
+        showSearch: false,
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            const type = params.get('type');
+            this.pageTitle = params.get('title') || 'Products';
+
+            const endpoints = {
+                'new-releases': '/api/products/list/new-releases',
+                'best-sellers': '/api/products/list/best-sellers',
+                'specials': '/api/products/list/specials'
+            };
+
+            if (endpoints[type]) this.fetchProducts(endpoints[type]);
+            else this.loading = false;
+        },
+        async fetchProducts(endpoint) {
+            this.loading = true;
+            try {
+                const res = await axios.get(endpoint);
+                this.products = res.data;
+            } catch (err) { console.error(err); }
+            finally { this.loading = false; }
+        },
+        formatPrice: formatPrice,
+        toggleSearch() {
+            this.showSearch = !this.showSearch;
         }
     }));
 

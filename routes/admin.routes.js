@@ -409,12 +409,45 @@ router.post(
 // @route   DELETE /api/admin/sectors/:id
 // @desc    Delete a sector
 // @access  Private (Admin)
+// --- REPLACE THE ENTIRE DELETE /sectors/:id ROUTE ---
 router.delete('/sectors/:id', authenticateToken, checkRole(['Admin']), async (req, res) => {
+    const { id: sectorId } = req.params;
+    const client = await pool.connect();
     try {
-        // Note: The ON DELETE SET NULL on products.sector_id will handle un-linking products.
-        await pool.query('DELETE FROM sectors WHERE id = $1', [req.params.id]);
+        await client.query('BEGIN');
+
+        // 1. Get the image URLs before deleting the record
+        const sectorResult = await client.query('SELECT image_url, hero_image_url FROM sectors WHERE id = $1', [sectorId]);
+        if (sectorResult.rows.length === 0) {
+            // If not found, it might have been deleted already. Send success.
+            return res.status(200).json({ message: 'Sector already deleted.' });
+        }
+        const { image_url, hero_image_url } = sectorResult.rows[0];
+
+        // 2. Delete the sector from the database.
+        // Products linked via sector_id will have it set to NULL automatically.
+        await client.query('DELETE FROM sectors WHERE id = $1', [sectorId]);
+
+        // 3. Delete the physical image files from the /uploads folder
+        [image_url, hero_image_url].forEach(url => {
+            if (url) {
+                const filePath = path.join(__dirname, '..', url);
+                fs.unlink(filePath, (err) => {
+                    if (err) console.error(`Failed to delete sector image file: ${filePath}`, err);
+                    else console.log(`Successfully deleted sector image: ${filePath}`);
+                });
+            }
+        });
+
+        await client.query('COMMIT');
         res.status(200).json({ message: 'Sector deleted successfully.' });
-    } catch (error) { res.status(500).json({ message: 'Server error' }); }
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error deleting sector:', error);
+        res.status(500).json({ message: 'Server error' });
+    } finally {
+        client.release();
+    }
 });
 
 
