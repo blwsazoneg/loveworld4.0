@@ -1922,8 +1922,26 @@ document.addEventListener('alpine:init', () => {
         editingSectionId: null,
 
         init() {
-            if (Alpine.store('auth').user?.role === 'Admin')
+            // This watcher will run whenever the user's login state changes.
+            this.$watch('$store.auth.loggedIn', (isLoggedIn) => {
+                // We also check the role to be safe.
+                if (isLoggedIn && Alpine.store('auth').hasRole('Admin')) {
+                    this.fetchAllContent();
+                } else {
+                    // If the user logs out or is not an admin, clear the data.
+                    this.loading = false;
+                    this.slides = [];
+                    this.shopSections = [];
+                }
+            });
+
+            // This handles the initial page load if the user is already logged in.
+            if (Alpine.store('auth').loggedIn && Alpine.store('auth').hasRole('Admin')) {
                 this.fetchAllContent();
+            } else {
+                // If they aren't logged in on page load, we can stop the loading spinner.
+                this.loading = false;
+            }
         },
 
         async fetchAllContent() {

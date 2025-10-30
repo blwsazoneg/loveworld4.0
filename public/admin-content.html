@@ -111,45 +111,37 @@
         </div>
     </nav>
 
-    <div class="container my-5 pt-5" x-data="adminContentPage">
-        <!-- Access Denied Message -->
-        <div x-show="!$store.auth.hasRole('Admin')" class="alert alert-danger">
-            Access Denied. You must be an Administrator to view this page.
+    <div class="container my-5 pt-5">
+        <div x-show="!$store.auth.hasRole('Admin')" class="alert alert-danger text-center">
+            <h3>Access Denied</h3>
+            <p>You must be an Administrator to view this page.</p>
         </div>
 
-        <!-- Main Admin Content -->
         <div x-show="$store.auth.hasRole('Admin')">
-            <h1 class="mb-4">Manage Homepage Content</h1>
+            <h1 class="display-5 mb-4" style="font-family: var(--font-heading);">Manage Homepage Content</h1>
 
-            <!-- ======================================================= -->
-            <!-- CARD 1: HERO SLIDE MANAGEMENT (WITH INLINE EDITING)     -->
-            <!-- ======================================================= -->
+            <!-- CARD 1: HERO SLIDE MANAGEMENT -->
             <div class="card mb-4">
                 <div class="card-header">
-                    <h3>Hero Carousel Slides</h3>
+                    <h3 style="font-family: var(--font-heading);">Hero Carousel Slides</h3>
                 </div>
                 <div class="card-body">
-                    <div x-show="loading" class="text-center p-4">Loading Slides...</div>
-
+                    <div x-show="loading" class="text-center p-4 text-muted">Loading Slides...</div>
+                    <div x-show="!loading && slides.length === 0" class="text-center p-4 text-muted">No hero slides
+                        created yet.</div>
                     <template x-for="(slide, slideIndex) in slides" :key="slide.id">
-                        <div class="border p-3 mb-3 rounded bg-light">
-
-                            <!-- VIEW MODE for slide -->
+                        <div class="border p-3 mb-3 rounded bg-white">
                             <div x-show="editingSlideId !== slide.id" x-transition>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span><strong x-text="slide.title_text || 'Untitled'"></strong> <em
                                             class="text-muted"
                                             x-text="slide.is_active ? '(Active)' : '(Inactive)'"></em></span>
-                                    <div>
-                                        <button class="btn btn-sm btn-outline-primary"
-                                            @click="editingSlideId = slide.id">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger ms-2"
-                                            @click="deleteSlide(slide.id)">Delete Slide</button>
-                                    </div>
+                                    <div><button class="btn btn-sm btn-outline-primary"
+                                            @click="editingSlideId = slide.id">Edit</button><button
+                                            class="btn btn-sm btn-outline-danger ms-2"
+                                            @click="deleteSlide(slide.id)">Delete Slide</button></div>
                                 </div>
                             </div>
-
-                            <!-- EDIT MODE for slide -->
                             <div x-show="editingSlideId === slide.id" x-transition>
                                 <h6>Edit Slide Details</h6>
                                 <div class="row g-2 align-items-end">
@@ -165,28 +157,21 @@
                                             <option :value="true">Active</option>
                                             <option :value="false">Inactive</option>
                                         </select></div>
-                                    <div class="col-12 text-end mt-2">
-                                        <button class="btn btn-sm btn-secondary me-2"
-                                            @click="editingSlideId = null; fetchSlides();">Cancel</button>
-                                        <button class="btn btn-sm btn-success" @click="saveSlide(slide)">Save
-                                            Changes</button>
-                                    </div>
+                                    <div class="col-12 text-end mt-2"><button class="btn btn-sm btn-secondary me-2"
+                                            @click="editingSlideId = null; fetchAllContent();">Cancel</button><button
+                                            class="btn btn-sm btn-success" @click="saveSlide(slide)">Save
+                                            Changes</button></div>
                                 </div>
                             </div>
-
                             <hr>
-
-                            <!-- Collage image manager (visible in both modes) -->
                             <h6>Collage Images</h6>
                             <div class="d-flex flex-wrap gap-3 mb-3">
                                 <template x-for="img in slide.collage_images" :key="img.id">
-                                    <div class="position-relative">
-                                        <img :src="img.image_url"
-                                            style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;">
-                                        <button @click="deleteCollageImage(img.id, slideIndex)"
+                                    <div class="position-relative"><img :src="img.image_url"
+                                            style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;"><button
+                                            @click="deleteCollageImage(img.id, slideIndex)"
                                             class="btn btn-sm btn-danger rounded-circle position-absolute top-0 end-0"
-                                            style="transform: translate(50%, -50%);">&times;</button>
-                                    </div>
+                                            style="transform: translate(50%, -50%);">&times;</button></div>
                                 </template>
                             </div>
                             <form @submit.prevent="addCollageImage(slide.id, slideIndex)" class="border-top pt-3">
@@ -213,17 +198,15 @@
                             </form>
                         </div>
                     </template>
-
-                    <!-- Form to Add a New Slide -->
                     <form @submit.prevent="addSlide" class="mt-4 border-top pt-4">
-                        <h5 class="mb-3">Add New Hero Slide</h5>
+                        <h5 class="mb-3" style="font-family: var(--font-heading);">Add New Hero Slide</h5>
                         <div class="row">
-                            <div class="col-md-6 mb-3"><label>Title Text</label><input type="text" class="form-control"
-                                    x-model="newSlide.title_text" required></div>
-                            <div class="col-md-6 mb-3"><label>Subtitle Text</label><input type="text"
+                            <div class="col-md-6 mb-3"><label class="form-label">Title Text</label><input type="text"
+                                    class="form-control" x-model="newSlide.title_text" required></div>
+                            <div class="col-md-6 mb-3"><label class="form-label">Subtitle Text</label><input type="text"
                                     class="form-control" x-model="newSlide.subtitle_text"></div>
-                            <div class="col-md-6 mb-3"><label>Background Image</label><input type="file"
-                                    class="form-control"
+                            <div class="col-md-12 mb-3"><label class="form-label">Background Image</label><input
+                                    type="file" class="form-control"
                                     @change="newSlide.background_image_url_file = $event.target.files[0]" required>
                             </div>
                         </div>
@@ -232,36 +215,29 @@
                 </div>
             </div>
 
-            <!-- ======================================================= -->
-            <!-- CARD 2: SHOP SECTION MANAGEMENT (WITH INLINE EDITING)   -->
-            <!-- ======================================================= -->
+            <!-- CARD 2: SHOP SECTION MANAGEMENT -->
             <div class="card mt-4">
                 <div class="card-header">
-                    <h3>Shop Sections</h3>
+                    <h3 style="font-family: var(--font-heading);">Shop Sections</h3>
                 </div>
                 <div class="card-body">
                     <h6>Current Sections</h6>
                     <ul class="list-group mb-4">
                         <template x-for="section in shopSections" :key="section.id">
                             <li class="list-group-item">
-                                <!-- VIEW MODE for section -->
                                 <div x-show="editingSectionId !== section.id" x-transition
                                     class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span class="fw-bold" x-text="section.title"></span>
-                                        <small class="text-muted d-block"
+                                    <div><span class="fw-bold" x-text="section.title"></span><small
+                                            class="text-muted d-block"
                                             x-text="`Type: ${section.type} | Order: ${section.display_order}`"></small>
                                     </div>
-                                    <div>
-                                        <a :href="`/admin-manage-section.html?id=${section.id}`"
-                                            class="btn btn-sm btn-outline-info">Manage Products</a>
-                                        <button class="btn btn-sm btn-outline-primary mx-2"
-                                            @click="editingSectionId = section.id">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger"
-                                            @click="deleteShopSection(section.id)">&times;</button>
-                                    </div>
+                                    <div><a :href="`/admin-manage-section.html?id=${section.id}`"
+                                            class="btn btn-sm btn-outline-info">Manage Products</a><button
+                                            class="btn btn-sm btn-outline-primary mx-2"
+                                            @click="editingSectionId = section.id">Edit</button><button
+                                            class="btn btn-sm btn-outline-danger"
+                                            @click="deleteShopSection(section.id)">&times;</button></div>
                                 </div>
-                                <!-- EDIT MODE for section -->
                                 <div x-show="editingSectionId === section.id" x-transition>
                                     <h6>Edit Section Details</h6>
                                     <div class="row g-2 align-items-end">
@@ -283,18 +259,15 @@
                                                 class="form-control form-control-sm"
                                                 :value="section.end_date?.split('T')[0]"
                                                 @input="section.end_date = $event.target.value"></div>
-                                        <div class="col-md-2 text-end">
-                                            <button class="btn btn-sm btn-secondary me-2"
-                                                @click="editingSectionId = null; fetchAllContent();">Cancel</button>
-                                            <button class="btn btn-sm btn-success"
-                                                @click="saveSection(section)">Save</button>
-                                        </div>
+                                        <div class="col-md-2 text-end"><button class="btn btn-sm btn-secondary me-2"
+                                                @click="editingSectionId = null; fetchAllContent();">Cancel</button><button
+                                                class="btn btn-sm btn-success"
+                                                @click="saveSection(section)">Save</button></div>
                                     </div>
                                 </div>
                             </li>
                         </template>
                     </ul>
-                    <!-- Form to Add a New Section (unchanged) -->
                     <form @submit.prevent="addShopSection" class="mt-4 border-top pt-4">
                         <h5 class="mb-3">Add New Shop Section</h5>
                         <div class="row">
@@ -323,47 +296,70 @@
             </div>
         </div>
     </div>
-
-    <!-- ======================================================= -->
-    <!-- NEW: MANAGE SECTION PRODUCTS MODAL                      -->
-    <!-- ======================================================= -->
-    <div class="modal fade" id="manageProductsModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+        x-data="authModal">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Manage Products for "<span x-text="activeSection.title"></span>"</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
                 </div>
                 <div class="modal-body">
-                    <h6>Products Currently in this Section</h6>
-                    <ul class="list-group mb-4">
-                        <template x-for="product in activeSection.products" :key="product.id">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span x-text="product.name"></span>
-                                <button class="btn btn-sm btn-outline-danger"
-                                    @click="removeProductFromSection(product.id)">&times;</button>
-                            </li>
-                        </template>
-                        <li x-show="!activeSection.products || activeSection.products.length === 0"
-                            class="list-group-item text-muted">No products have been added to this section yet.</li>
-                    </ul>
+                    <!-- Login Form View -->
+                    <div x-show="!showRegisterForm" class="login-form-container">
+                        <h2>Login to your account</h2>
+                        <form @submit.prevent="handleLogin">
+                            <input type="text" x-model="loginIdentifier" class="form-control"
+                                placeholder="Email or Username" required>
+                            <input type="password" x-model="loginPassword" class="form-control" placeholder="Password"
+                                required>
+                            <button type="submit" class="btn-login">Login</button>
+                        </form>
+                        <p class="create-account-link">
+                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
+                        </p>
+                        <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
 
-                    <h6>Add a Product to this Section</h6>
-                    <div class="input-group">
-                        <select class="form-select" x-model="productToAdd">
-                            <option value="">Select a product to add...</option>
-                            <template x-for="product in allProducts" :key="product.id">
-                                <option :value="product.id" x-text="product.name"></option>
-                            </template>
-                        </select>
-                        <button class="btn btn-gold" @click="addProductToSection()">Add Product</button>
+                        <div x-show="loginMessage" class="alert mt-3"
+                            :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
                     </div>
-                    <div x-show="modalMessage" class="alert mt-2 py-1"
-                        :class="modalError ? 'alert-danger' : 'alert-success'" x-text="modalMessage"></div>
+
+                    <!-- Registration Form View -->
+                    <div x-show="showRegisterForm" class="login-form-container"
+                        style="color: #333; background: #fff; border-radius: 10px;">
+                        <!-- We will re-style this form later to match the new theme -->
+                        <!-- For now, we wrap it in a white box to keep it readable -->
+                        <h2 style="color: #333;">Create Your Account</h2>
+                        <form @submit.prevent="handleRegister">
+                            <!-- Paste the full registration form fields here -->
+                            <div class="row mb-2">
+                                <div class="col"><input type="text" x-model="firstName" class="form-control"
+                                        placeholder="First Name" required></div>
+                                <div class="col"><input type="text" x-model="lastName" class="form-control"
+                                        placeholder="Last Name" required></div>
+                            </div>
+                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
+                                    placeholder="Email" required></div>
+                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
+                                    placeholder="Username" required></div>
+                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
+                                    placeholder="Password" required></div>
+                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
+                                    placeholder="Confirm Password" required></div>
+
+                            <button type="submit" class="btn-login">Register</button>
+                        </form>
+                        <p class="create-account-link" style="color: #666;">
+                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
+                                style="color: #007bff;">Login here</a>
+                        </p>
+                        <div x-show="registerMessage" class="alert mt-3"
+                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/vendor/kingschat.bundle.js"></script>
