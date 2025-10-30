@@ -4,26 +4,30 @@ import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { checkRole } from '../middleware/role.middleware.js';
 import multer from 'multer';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'loveworld_app_products', // A folder name in your Cloudinary account
+        allowed_formats: ['jpg', 'jpeg', 'png', 'mp4', 'pdf', 'doc', 'docx'],
+    },
+});
+
+// --- Multer Configuration for Product Images ---
+
+const upload = multer({ storage: storage });
+// ---------------------------------------------
 
 const router = express.Router();
 
-// --- Multer Configuration for Product Images ---
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/products'); // Store product images in a dedicated subfolder
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-const upload = multer({ storage: storage });
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// ---------------------------------------------
 
 // @route   POST /api/admin/products
 // @desc    Create a new product with images
@@ -51,14 +55,15 @@ router.post('/products', authenticateToken, checkRole(['Admin', 'SBO']), upload.
         const newProduct = await client.query(productQuery, productValues);
         const newProductId = newProduct.rows[0].id;
 
+        // THE FIX: req.files now contains Cloudinary data
         if (req.files && req.files.length > 0) {
             const imageInsertPromises = req.files.map((file, index) => {
-                const imageUrl = `/uploads/products/${file.filename}`;
+                // Get the secure URL from the Cloudinary response
+                const imageUrl = file.path;
                 return client.query('INSERT INTO product_images (product_id, image_url, display_order) VALUES ($1, $2, $3)', [newProductId, imageUrl, index]);
             });
             await Promise.all(imageInsertPromises);
         }
-
         await client.query('COMMIT');
         res.status(201).json({ message: 'Product created successfully!', productId: newProductId });
 
@@ -382,8 +387,8 @@ router.post(
 
             // Get the public path of the uploaded files, if they exist
             // req.files is now an object, e.g., { image_url: [file], hero_image_url: [file] }
-            const imageUrl = req.files['image_url'] ? `/uploads/products/${req.files['image_url'][0].filename}` : null;
-            const heroImageUrl = req.files['hero_image_url'] ? `/uploads/products/${req.files['hero_image_url'][0].filename}` : null;
+            const imageUrl = req.files['image_url'] ? req.files['image_url'][0].path : null;
+            const heroImageUrl = req.files['hero_image_url'] ? req.files['hero_image_url'][0].path : null;
 
             const newSector = await pool.query(
                 `INSERT INTO sectors (name, image_url, hero_image_url, is_featured, display_order)
@@ -565,15 +570,23 @@ router.delete('/hero-slides/:slideId', authenticateToken, checkRole(['Admin']), 
     finally { client.release(); }
 });
 
+const deleteCloudinaryFile = (imageUrl) => {
+    // Extract the public_id from the full URL
+    const publicId = imageUrl.split('/').pop().split('.')[0];
+    cloudinary.uploader.destroy(`loveworld_app_products/${publicId}`, (error, result) => {
+        if (error) console.error('Failed to delete from Cloudinary:', error);
+        else console.log('Successfully deleted from Cloudinary:', result);
+    });
+};
+
 // DELETE a single collage image (PRODUCTION-READY VERSION)
 router.delete('/collage-images/:imageId', authenticateToken, checkRole(['Admin']), async (req, res) => {
     try {
         const imageResult = await pool.query('SELECT image_url FROM hero_slide_collages WHERE id = $1', [req.params.imageId]);
         if (imageResult.rows.length === 0) return res.status(404).json({ message: 'Image not found.' });
         const imageUrl = imageResult.rows[0].image_url;
-
-        await pool.query('DELETE FROM hero_slide_collages WHERE id = $1', [req.params.imageId]);
-
+        await pool.query('DELETE FROM product_images WHERE id = $1', [imageId]);
+        if (imageUrl) deleteCloudinaryFile(imageUrl); // THE FIX
         // Delete the physical file from disk
         if (imageUrl) {
             fs.unlink(path.join(__dirname, '..', imageUrl), (err) => {
