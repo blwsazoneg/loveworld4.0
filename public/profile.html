@@ -10,6 +10,7 @@
     <!-- KingsChat SDK Styles -->
     <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
     <!-- Custom Global CSS -->
+    <link rel="stylesheet" href="/css/fonts.css">
     <link rel="stylesheet" href="/css/global.css">
     <link rel="stylesheet" href="/css/modal.css">
     <!-- Axios for API calls -->
@@ -285,7 +286,6 @@
                                     <li class="list-group-item"><strong>Date of Birth:</strong> <span
                                             x-text="user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : 'Not Provided'"></span>
                                     </li>
-                                    <hr>
                                     <li class="list-group-item"><strong>Zone:</strong> <span
                                             x-text="user.zone || 'Not Provided'"></span></li>
                                     <li class="list-group-item"><strong>Group:</strong> <span
@@ -299,14 +299,12 @@
                                     </li>
                                     <li class="list-group-item"><strong>Ministry Department:</strong> <span
                                             x-text="user.ministry_department || 'Not Provided'"></span></li>
-                                    <hr>
                                     <li class="list-group-item"><strong>Educational Qualification:</strong> <span
                                             x-text="user.educational_qualification || 'Not Provided'"></span></li>
                                     <li class="list-group-item"><strong>Institution of Completion:</strong> <span
                                             x-text="user.institution_of_completion || 'Not Provided'"></span></li>
                                     <li class="list-group-item"><strong>Professional Qualification:</strong> <span
                                             x-text="user.professional_qualification || 'Not Provided'"></span></li>
-                                    <hr>
                                     <li class="list-group-item"><strong>Has Work Experience:</strong> <span
                                             x-text="user.has_work_experience ? 'Yes' : (user.has_work_experience === false ? 'No' : 'Not Provided')"></span>
                                     </li>
@@ -318,7 +316,6 @@
                                         <p style="white-space: pre-wrap;" class="mb-0"
                                             x-text="user.significant_achievements || 'Not Provided'"></p>
                                     </li>
-                                    <hr>
                                     <li class="list-group-item"><strong>Areas of Interest:</strong> <span
                                             x-text="user.areas_of_interest?.join(', ') || 'Not Provided'"></span></li>
                                     <li class="list-group-item"><strong>Apply For:</strong> <span
@@ -355,7 +352,6 @@
                                 <div class="mb-3" x-show="formData.ministry_staff"><label class="form-label">Ministry
                                         Department</label><input type="text" class="form-control"
                                         x-model="formData.ministry_department"></div>
-                                <hr>
                                 <div class="mb-3"><label class="form-label">Educational Qualification</label><input
                                         type="text" class="form-control" x-model="formData.educational_qualification">
                                 </div>
@@ -365,7 +361,6 @@
                                 <div class="mb-3"><label class="form-label">Professional Qualification</label><input
                                         type="text" class="form-control" x-model="formData.professional_qualification">
                                 </div>
-                                <hr>
                                 <div class="mb-3"><label class="form-label">Work Experience</label><select
                                         class="form-select" x-model="formData.has_work_experience">
                                         <option :value="true">Yes</option>
@@ -382,7 +377,6 @@
                                             Achievements</label><textarea class="form-control" rows="3"
                                             x-model="formData.significant_achievements"></textarea></div>
                                 </div>
-                                <hr>
                                 <div class="mb-3">
                                     <label class="form-label">Areas of Interest</label>
                                     <input type="text" class="form-control" x-model="interestInput"

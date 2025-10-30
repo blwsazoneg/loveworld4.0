@@ -1,8 +1,8 @@
 // public/js/utils.js
 const introPages = [
     'index.html',
-    'explore-economy.html',
-    'shop-made-in.html',
+    'explore-the-loveworld-economy.html',
+    'shop-made-in-loveworld.html',
     'discover-placements.html',
     'bring-innovations.html'
 ];

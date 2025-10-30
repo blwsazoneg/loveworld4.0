@@ -8,11 +8,9 @@ body.shop-page {
 /* 1. The Main Navbar Bar */
 .navbar-shop {
     background-color: rgba(10, 10, 10, 0.9);
-    /* Semi-transparent dark/black */
     backdrop-filter: blur(10px);
     padding: 0.5rem 1rem;
     font-family: sans-serif;
-    /* border-bottom: none !important; */
 }
 
 /* 2. The Hamburger Menu Icon (Toggler) */

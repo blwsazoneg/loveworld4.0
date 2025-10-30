@@ -1,0 +1,48 @@
+/* public/css/fonts.css (CORRECTED WITH EXACT FILENAMES) */
+
+/* === LORA (Variable Font Version) === */
+/* This defines the regular and bold weights for Lora */
+@font-face {
+    font-family: 'Lora';
+    src: url('/fonts/lora-variablefont_wght-webfont.woff2') format('woff2'),
+        url('/fonts/lora-variablefont_wght-webfont.woff') format('woff');
+    font-weight: 400 700;
+    /* Defines the available weight range */
+    font-style: normal;
+}
+
+/* This defines the italic styles for Lora */
+@font-face {
+    font-family: 'Lora';
+    src: url('/fonts/lora-italic-variablefont_wght-webfont.woff2') format('woff2'),
+        url('/fonts/lora-italic-variablefont_wght-webfont.woff') format('woff');
+    font-weight: 400 700;
+    /* Defines the available weight range */
+    font-style: italic;
+}
+
+
+/* === GLACIAL INDIFFERENCE (Standard Version) === */
+@font-face {
+    font-family: 'Glacial Indifference';
+    src: url('/fonts/glacialindifference-regular-webfont.woff2') format('woff2'),
+        url('/fonts/glacialindifference-regular-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Glacial Indifference';
+    src: url('/fonts/glacialindifference-bold-webfont.woff2') format('woff2'),
+        url('/fonts/glacialindifference-bold-webfont.woff') format('woff');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Glacial Indifference';
+    src: url('/fonts/glacialindifference-italic-webfont.woff2') format('woff2'),
+        url('/fonts/glacialindifference-italic-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: italic;
+}
