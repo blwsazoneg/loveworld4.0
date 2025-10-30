@@ -154,9 +154,9 @@
                                 carousels?</label>
                         </div>
 
-                        <button type="submit" class="btn btn-gold" :disabled="loading">
-                            <span x-show="!loading">Add Sector</span>
-                            <span x-show="loading">Adding...</span>
+                        <button type="submit" class="btn btn-gold" :disabled="sectorFormLoading">
+                            <span x-show="!sectorFormLoading">Add Sector</span>
+                            <span x-show="sectorFormLoading">Adding...</span>
                         </button>
 
                         <div x-show="sectorMessage" class="alert mt-2 py-1"
@@ -181,7 +181,11 @@
                         <div class="input-group">
                             <input type="text" class="form-control" placeholder="New brand name..."
                                 x-model="newBrandName" required>
-                            <button type="submit" class="btn btn-gold">Add Brand</button>
+                            <!-- THE FIX: Bind to 'brandFormLoading' -->
+                            <button type="submit" class="btn btn-gold" :disabled="brandFormLoading">
+                                <span x-show="!brandFormLoading">Add Brand</span>
+                                <span x-show="brandFormLoading">Adding...</span>
+                            </button>
                         </div>
                         <div x-show="brandMessage" class="alert mt-2 py-1"
                             :class="brandError ? 'alert-danger' : 'alert-success'" x-text="brandMessage"></div>

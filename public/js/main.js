@@ -1781,10 +1781,12 @@ document.addEventListener('alpine:init', () => {
 
         sectorMessage: '',
         sectorError: false,
+        sectorFormLoading: false,
         // State for the 'Add Brand' form
         newBrandName: '',
         brandMessage: '',
         brandError: false,
+        brandFormLoading: false,
 
         init() {
             if (Alpine.store('auth').user?.role === 'Admin') {
@@ -1811,7 +1813,7 @@ document.addEventListener('alpine:init', () => {
         async addSector() {
             this.sectorMessage = '';
             this.sectorError = false;
-            this.loading = true; // Use a loading state
+            this.sectorFormLoading = true; // Use a loading state
 
             // 1. Create a FormData object
             const data = new FormData();
@@ -1846,7 +1848,7 @@ document.addEventListener('alpine:init', () => {
                 this.sectorError = true;
                 this.sectorMessage = err.response?.data?.message || 'Failed to add sector.';
             } finally {
-                this.loading = false;
+                this.sectorFormLoading = false;
             }
         },
 
@@ -1862,6 +1864,8 @@ document.addEventListener('alpine:init', () => {
         // --- Brand Methods ---
         async addBrand() {
             this.brandMessage = '';
+            this.brandError = false;
+            this.brandFormLoading = true; // Use the new, specific loading state
             try {
                 const token = Alpine.store('auth').token;
                 const response = await axios.post('/api/admin/brands',
@@ -1876,6 +1880,8 @@ document.addEventListener('alpine:init', () => {
             } catch (err) {
                 this.brandError = true;
                 this.brandMessage = err.response?.data?.message || 'Failed to add brand.';
+            } finally {
+                this.brandFormLoading = false;
             }
         },
         async deleteBrand(brandId) {
