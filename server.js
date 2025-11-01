@@ -15,6 +15,7 @@ import checkoutRoutes from './routes/checkout.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import adminRoutes from './routes/admin.routes.js'; // <-- 1. IMPORT
 import sboRoutes from './routes/sbo.routes.js';
+import vendorRoutes from './routes/vendors.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +41,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes); // <-- 2. USE THE NEW ADMIN ROUTE
 app.use('/api/sbo', sboRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 // Serve static assets from the 'public' and 'uploads' folders
 app.use(express.static(path.join(__dirname, 'public')));

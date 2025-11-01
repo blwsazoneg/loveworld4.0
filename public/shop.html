@@ -115,7 +115,9 @@
                             <li x-show="$store.auth.hasRole('Admin')">
                                 <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
                             </li>
-
+                            <li x-show="$store.auth.hasRole('Admin')">
+                                <a class="dropdown-item" href="/admin-vendors.html">Manage Vendors</a>
+                            </li>
                             <li x-show="$store.auth.loggedIn">
                                 <hr class="dropdown-divider">
                             </li>

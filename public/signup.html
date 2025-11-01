@@ -111,7 +111,9 @@
                                     <li x-show="$store.auth.hasRole('Admin')">
                                         <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
                                     </li>
-
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-vendors.html">Manage Vendors</a>
+                                    </li>
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -190,7 +192,7 @@
             </div>
         </div>
     </div>
-    
+
 
     <div class="signup-container mt-5" x-data="authModal"> <!-- We can re-use the authModal logic -->
         <!-- Left Panel: Image and Title -->

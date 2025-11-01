@@ -2509,6 +2509,192 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
+    // 32
+    Alpine.data('vendorLocatorPage', () => ({
+        allVendors: [],
+        filteredVendors: [],
+        map: null,
+        markers: null,
+        loading: true,
+        search: { country: '', city: '', postalCode: '' },
+        resultsTitle: 'All Vendors',
+
+        init() {
+            this.initializeMap();
+            this.fetchVendors();
+        },
+
+        initializeMap() {
+            this.map = L.map('map').setView([20, 0], 2); // Center on the world
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(this.map);
+            // Initialize the marker cluster group
+            this.markers = L.markerClusterGroup();
+            this.map.addLayer(this.markers);
+        },
+
+        async fetchVendors() {
+            this.loading = true;
+            try {
+                const response = await axios.get('/api/vendors');
+                this.allVendors = response.data;
+                this.filteredVendors = this.allVendors;
+                this.populateMap();
+            } catch (err) { console.error('Failed to fetch vendors', err); }
+            finally { this.loading = false; }
+        },
+
+        populateMap() {
+            this.markers.clearLayers(); // Clear old markers
+            this.filteredVendors.forEach(vendor => {
+                const marker = L.marker([vendor.latitude, vendor.longitude]);
+                marker.bindPopup(`
+                <b>${vendor.company_name}</b><br>
+                ${vendor.address}<br>
+                <em>${vendor.sector_name || ''}</em>
+            `);
+                this.markers.addLayer(marker);
+            });
+            // Fit map to the bounds of the visible markers
+            if (this.filteredVendors.length > 0) {
+                this.map.fitBounds(this.markers.getBounds().pad(0.1));
+            }
+        },
+
+        filterVendors() {
+            const { country, city } = this.search;
+            this.filteredVendors = this.allVendors.filter(vendor => {
+                const countryMatch = country ? vendor.country.toLowerCase().includes(country.toLowerCase()) : true;
+                const cityMatch = city ? vendor.city.toLowerCase().includes(city.toLowerCase()) : true;
+                return countryMatch && cityMatch;
+            });
+            this.resultsTitle = `Vendors in ${city || country || 'Search Results'}`;
+            this.populateMap(); // Re-populate the map with filtered results
+        },
+
+        panToVendor(vendor) {
+            this.map.setView([vendor.latitude, vendor.longitude], 15); // Zoom in on the selected vendor
+        }
+    }));
+
+    // 33
+    // public/js/main.js
+    Alpine.data('adminVendorsPage', () => ({
+        vendors: [],
+        sectors: [],
+        loading: true,
+
+        // --- ADD THIS ARRAY ---
+        countries: [
+            "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
+            "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
+            "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo, Democratic Republic of the", "Congo, Republic of the", "Costa Rica", "Cote d'Ivoire", "Croatia", "Cuba", "Cyprus", "Czechia",
+            "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+            "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+            "Fiji", "Finland", "France",
+            "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana",
+            "Haiti", "Honduras", "Hungary",
+            "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
+            "Jamaica", "Japan", "Jordan",
+            "Kazakhstan", "Kenya", "Kiribati", "Kosovo", "Kuwait", "Kyrgyzstan",
+            "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+            "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar",
+            "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway",
+            "Oman",
+            "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
+            "Qatar",
+            "Romania", "Russia", "Rwanda",
+            "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
+            "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
+            "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States of America", "Uruguay", "Uzbekistan",
+            "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
+            "Yemen",
+            "Zambia", "Zimbabwe"
+        ],
+
+        // State for the form
+        isEditing: false,
+        formData: { id: null, company_name: '', address: '', city: '', country: '', postal_code: '', sector_name: '' },
+        formLoading: false,
+        formMessage: '',
+        formError: false,
+
+        init() {
+            if (Alpine.store('auth').hasRole('Admin')) {
+                this.fetchInitialData();
+            }
+        },
+        async fetchInitialData() {
+            this.loading = true;
+            try {
+                const token = Alpine.store('auth').token;
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const [vendorsRes, sectorsRes] = await Promise.all([
+                    axios.get('/api/vendors', { headers }),
+                    axios.get('/api/products/sectors') // Public, no header needed
+                ]);
+                this.vendors = vendorsRes.data;
+                this.sectors = sectorsRes.data;
+            } catch (err) { console.error(err); }
+            finally { this.loading = false; }
+        },
+
+        startEditing(vendor) {
+            this.isEditing = true;
+            this.formData = JSON.parse(JSON.stringify(vendor));
+            // THE FIX: When editing, we need the sector NAME, not the ID
+            this.formData.sector_name = vendor.sector_name || '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        cancelEdit() {
+            this.isEditing = false;
+            // THE FIX: Reset the correct property
+            this.formData = { id: null, company_name: '', address: '', city: '', country: '', postal_code: '', sector_name: '' };
+            this.formMessage = '';
+        },
+        
+        cancelEdit() {
+            this.isEditing = false;
+            this.formData = { id: null, company_name: '', address: '', city: '', country: '', postal_code: '', sector_id: '' };
+            this.formMessage = '';
+        },
+
+        async handleSubmit() {
+            this.formLoading = true; this.formMessage = ''; this.formError = false;
+            try {
+                const token = Alpine.store('auth').token;
+                const headers = { 'Authorization': `Bearer ${token}` };
+                if (this.isEditing) {
+                    // UPDATE
+                    await axios.put(`/api/vendors/${this.formData.id}`, this.formData, { headers });
+                    this.formMessage = 'Vendor updated successfully!';
+                } else {
+                    // CREATE
+                    await axios.post('/api/vendors', this.formData, { headers });
+                    this.formMessage = 'Vendor added successfully!';
+                }
+                this.cancelEdit(); // Clear form
+                await this.fetchInitialData(); // Refresh the list
+            } catch (err) {
+                this.formMessage = err.response?.data?.message || 'An error occurred.';
+                this.formError = true;
+            } finally {
+                this.formLoading = false;
+            }
+        },
+
+        async deleteVendor(vendorId) {
+            if (!confirm('Are you sure you want to delete this vendor location?')) return;
+            try {
+                const token = Alpine.store('auth').token;
+                await axios.delete(`/api/vendors/${vendorId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                this.vendors = this.vendors.filter(v => v.id !== vendorId);
+            } catch (err) { alert('Failed to delete vendor.'); }
+        }
+    }));
+
     //================================================================
     // Initialize the auth store when the app loads
     //================================================================

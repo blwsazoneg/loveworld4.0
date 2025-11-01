@@ -111,7 +111,9 @@
                                     <li x-show="$store.auth.hasRole('Admin')">
                                         <a class="dropdown-item" href="/admin-applications.html">Espees Businesses</a>
                                     </li>
-
+                                    <li x-show="$store.auth.hasRole('Admin')">
+                                        <a class="dropdown-item" href="/admin-vendors.html">Manage Vendors</a>
+                                    </li>
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -201,7 +203,8 @@
         <div class="signup-form-panel my-auto">
             <div class="signup-form-wrapper">
                 <div class="d-flex justify-content-center mb-5">
-                    <img src="/images/espees.png" width="100px" height="100px" alt="Business Logo" class="business-logo">
+                    <img src="/images/espees.png" width="100px" height="100px" alt="Business Logo"
+                        class="business-logo">
                 </div>
                 <p class="text-center">Business is better with Espees.
                     Conduct business transactions with Espees. Espees are proven stable and reliable, with an
@@ -210,8 +213,8 @@
                     Espees
                     friendly business or vendor anywhere in the world with the espees vendor
                     locator. Discover how Espees can help you save on your next shopping experience</p>
+            </div>
         </div>
-    </div>
     </div>
 
 
