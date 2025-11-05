@@ -19,8 +19,6 @@ body.intro-page {
     left: 0;
     width: 100%;
     height: 100%;
-    /* background-color: rgba(184, 134, 11, 0.5); */
-    /* Semi-transparent dark gold hue */
     z-index: 1;
 }
 
@@ -35,7 +33,7 @@ body.intro-page {
     opacity: 1;
 }
 
-.intro-page .intro-text {
+.animated-text {
     animation: slideUpFadeIn 1s ease-out forwards;
 }
 
@@ -51,7 +49,7 @@ body.intro-page {
     }
 }
 
-.intro-page .container.slide-up-fade-out {
+.animated-text.slide-up-fade-out {
     animation: slideUpFadeOut 1s ease-out forwards;
 }
 
@@ -65,4 +63,9 @@ body.intro-page {
         transform: translateY(-50px);
         opacity: 0;
     }
+}
+
+.intro-page .btn {
+    opacity: 1 !important;
+    animation: none !important;
 }

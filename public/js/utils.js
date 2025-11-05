@@ -8,7 +8,7 @@ const introPages = [
 ];
 
 // Make the timer variable accessible in this file
-let introTimer = null; 
+let introTimer = null;
 
 export function startIntroTimer(currentPageFileName) {
     // Clear any existing timer before starting a new one
@@ -50,16 +50,19 @@ export function getCurrentPageIndex() {
 
 // Function to handle page transitions (slide up + fade) - remains the same
 export function applyPageExitAnimation(callback) {
-    const container = document.querySelector('.container');
-    if (container) {
-        container.classList.remove('fade-in');
-        container.classList.add('slide-up-fade-out');
-        // Wait for animation to complete before navigating
-        container.addEventListener('animationend', () => {
+    // THE FIX: Target only the element with the .animated-text class
+    const elementToAnimate = document.querySelector('.animated-text');
+
+    if (elementToAnimate) {
+        // Apply the exit animation class to the text
+        elementToAnimate.classList.add('slide-up-fade-out');
+
+        // Wait for the text's animation to complete before navigating
+        elementToAnimate.addEventListener('animationend', () => {
             callback();
         }, { once: true });
     } else {
-        callback(); // No animation element, just navigate
+        callback(); // If no animated element, just navigate immediately
     }
 }
 

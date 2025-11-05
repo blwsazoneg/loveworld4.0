@@ -20,7 +20,9 @@
 
     <nav class="navbar navbar-expand-lg navbar-shop fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand text-white" href="/shop.html">Made in Loveworld</a>
+            <a class="navbar-brand text-white" href="/shop.html">
+                <img src="images/lw4.png" height="50px" width="50px" alt="Logo">
+            </a>
 
             <!-- Hamburger Menu -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#shopNavContent">
@@ -30,9 +32,13 @@
             <div class="collapse navbar-collapse" id="shopNavContent">
                 <!-- Main Nav Links (conditionally shown) -->
                 <ul class="navbar-nav mx-auto" x-show="!showSearch" x-transition>
-                    <li class="nav-item"><a class="nav-link" href="/new-releases.html">New Releases</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/best-sellers.html">Best Sellers</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/specials.html">Specials</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/information.html">Home</a></li>
+                    <li class="nav-item"><a class="nav-link"
+                            href="/product-list.html?type=new-releases&title=New Releases">New Releases</a></li>
+                    <li class="nav-item"><a class="nav-link"
+                            href="/product-list.html?type=best-sellers&title=Best Sellers">Best Sellers</a></li>
+                    <li class="nav-item"><a class="nav-link"
+                            href="/product-list.html?type=specials&title=Specials">Specials</a></li>
                     <li class="nav-item"><a class="nav-link highlight"
                             href="/sector.html?name=Food%20%26%20Beverage">Food</a></li>
                     <li class="nav-item"><a class="nav-link" href="/faqs.html">FAQ's</a></li>
