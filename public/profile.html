@@ -17,27 +17,28 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <!-- KingsChat SDK Styles -->
     <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+    <link rel="shortcut icon" href="/images/lw4.0-logo.png" type="image/x-icon">
 
 </head>
 
 <!-- Add x-init to the body tag -->
 
-<body x-data="profilePage" x-init="if (!$store.auth.loggedIn) { window.location.href = '/information.html'; }">
+<body x-data="profilePage" x-init="if (!$store.auth.loggedIn) { window.location.href = '/information.html'; }" style="background-color: #b8860b;">
 
-    <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
+    <nav class="navbar navbar-expand-lg bg-black">
         <div class="container-fluid">
             <a class="navbar-brand text-gold" href="/">
-                <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
-                <b>LW 4.0</b>
-
+                <img src="/images/lw4.0-logo.png" alt="LW 4.0 Logo" height="60" width="60"
+                    class="d-inline-block align-text-top">
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" style="background-color: #b8860b;" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
+                aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
                 <ul class="navbar-nav">
-                   <li class="nav-item">
+                    <li class="nav-item">
                         <a class="nav-link text-gold" aria-current="page" href="/information.html">Home</a>
                     </li>
                     <li class="nav-item">
@@ -187,7 +188,7 @@
         </div>
     </div>
 
-    <div class="container my-5 py-5">
+    <div class="container my-5 py-5" x-cloak>
         <div x-show="!$store.auth.loggedIn" x-transition class="text-center p-5 bg-light rounded">
             <h3>Access Denied</h3>
             <p class="lead text-muted">You must be logged in to view your profile.</p>
@@ -199,7 +200,7 @@
         <div x-show="$store.auth.loggedIn" x-transition>
             <div class="row">
                 <div class="col-lg-8 offset-lg-2">
-                    <h1 class="mb-4">My Profile</h1>
+                    <h1 class="mb-4 text-white">My Profile</h1>
 
                     <!-- KingsChat Linking Section -->
                     <div class="card mb-4">

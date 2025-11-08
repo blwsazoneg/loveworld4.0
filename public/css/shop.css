@@ -8,6 +8,7 @@ body.shop-page {
 /* 1. The Main Navbar Bar */
 .navbar-shop {
     background-color: rgba(10, 10, 10, 0.9);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     padding: 0.5rem 1rem;
 }
@@ -256,9 +257,9 @@ body.shop-page {
 
 @media (max-width: 991.98px) {
     .hero-banner-container .hero-banner {
-    padding-top: 5rem;
-    height: 70vh !important;
-}
+        padding-top: 5rem;
+        height: 70vh !important;
+    }
 }
 
 /* This contains the text and ensures it is white */

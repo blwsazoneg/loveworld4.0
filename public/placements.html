@@ -12,19 +12,20 @@
     <link rel="stylesheet" href="/css/modal.css">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/kingschat-web-sdk/dist/stylesheets/style.min.css" />
+    <link rel="shortcut icon" href="/images/lw4.0-logo.png" type="image/x-icon">
 
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light fixed-top" style="background-color: white;">
+    <nav class="navbar navbar-expand-lg bg-black">
         <div class="container-fluid">
             <a class="navbar-brand text-gold" href="/">
-                <!-- <img src="/images/logo.png" alt="Company Logo" height="30" class="d-inline-block align-text-top"> -->
-                <b>LW 4.0</b>
-
+                <img src="/images/lw4.0-logo.png" alt="LW 4.0 Logo" height="60" width="60"
+                    class="d-inline-block align-text-top">
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" style="background-color: #b8860b;" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
+                aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
@@ -183,9 +184,6 @@
         <div class="hero-overlay" style="background-color: rgba(0,0,0,0.3);"></div>
         <div class="container hero-content">
             <h1 class="display-2 fw-bold">Work with a strategic organisation</h1>
-            <!-- <button class="btn btn-connect mt-4" @click="document.querySelector('#mainContent').scrollIntoView({ behavior: 'smooth' })">
-                Connect
-            </button> -->
         </div>
     </section>
 
@@ -195,7 +193,11 @@
             <div class="row">
                 <div class="col-lg-8 mx-auto text-center">
                     <p class="lead">Working with a Loveworld SBO is a great way to expand your horizon, by gaining
-                        experience and expertise through service and collaboration...</p>
+                        experience and expertise through service and collaboration. It is also an opportunity to add
+                        value to the Loveworld economy which in turn return empowers you and many others.
+                        The opportunities are endless, from agriculture and health care, to media, tech, hospitality and
+                        everything in between. There's a ever expanding world to explore.
+                    </p>
                 </div>
             </div>
         </div>
@@ -209,7 +211,7 @@
             <div class="container">
                 <!-- Show login prompt if user is not logged in -->
                 <div x-show="!$store.auth.loggedIn" class="text-center">
-                    <h3 class="text-dark">Please Log In to Connect</h3>
+                    <h3 class="text-dark">Please log in to connect</h3>
                     <p class="text-muted">You need to be logged in to complete the application form.</p>
                     <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#signInUpModal">Login or Sign
                         Up</button>
@@ -321,7 +323,7 @@
             x-show="$store.auth.user?.educational_qualification" x-cloak x-transition>
             <div class="row mb-4">
                 <div class="col-lg-8 mx-auto text-center">
-                    <h2 class="fw-bold">Current Openings</h2>
+                    <h2 class="fw-bold">Current openings</h2>
                     <p class="lead text-muted">Your profile has been updated. Please review the available openings
                         below.
                     </p> <!-- Search Bar -->
@@ -360,7 +362,7 @@
                         </template>
                     </div>
                     <div x-show="!loading && jobs.length === 0 && !error" class="text-center py-5 bg-light rounded">
-                        <h4>No Openings Found</h4>
+                        <h4>No openings found</h4>
                         <p class="text-muted">Try adjusting your search terms or check back later to connect.</p>
                     </div>
                     <!-- Pagination would go here if needed -->
