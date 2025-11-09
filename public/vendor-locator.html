@@ -77,8 +77,9 @@
                                     data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
                                     In</button>
 
-                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
-
+                                <a x-data
+                                    :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
+                                    class="btn btn-gold">Sign Up</a>
                             </div>
                         </template>
 
@@ -145,7 +146,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
                 </div>
                 <div class="modal-body">
                     <!-- Login Form View -->
@@ -158,47 +159,36 @@
                                 required>
                             <button type="submit" class="btn-login">Login</button>
                         </form>
-                        <p class="create-account-link">
-                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
-                        </p>
+                        <br>
+                        <p class="text-center text-white fw-bold">OR</p>
                         <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
 
                         <div x-show="loginMessage" class="alert mt-3"
                             :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <!-- Registration Form View -->
-                    <div x-show="showRegisterForm" class="login-form-container"
-                        style="color: #333; background: #fff; border-radius: 10px;">
-                        <!-- We will re-style this form later to match the new theme -->
-                        <!-- For now, we wrap it in a white box to keep it readable -->
-                        <h2 style="color: #333;">Create Your Account</h2>
-                        <form @submit.prevent="handleRegister">
-                            <!-- Paste the full registration form fields here -->
-                            <div class="row mb-2">
-                                <div class="col"><input type="text" x-model="firstName" class="form-control"
-                                        placeholder="First Name" required></div>
-                                <div class="col"><input type="text" x-model="lastName" class="form-control"
-                                        placeholder="Last Name" required></div>
-                            </div>
-                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
-                                    placeholder="Email" required></div>
-                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
-                                    placeholder="Username" required></div>
-                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
-                                    placeholder="Password" required></div>
-                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
-                                    placeholder="Confirm Password" required></div>
 
-                            <button type="submit" class="btn-login">Register</button>
-                        </form>
-                        <p class="create-account-link" style="color: #666;">
-                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
-                                style="color: #007bff;">Login here</a>
-                        </p>
-                        <div x-show="registerMessage" class="alert mt-3"
-                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
-                    </div>
+    <!-- ======================================================= -->
+    <!-- NEW: ACCOUNT NOT FOUND MODAL                            -->
+    <!-- ======================================================= -->
+    <div class="modal fade" id="accountNotFoundModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Account Not Found</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p x-data="{ notFoundMessage: '' }" x-text="notFoundMessage" id="notFoundMessageContent"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a x-data :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
+                        class="btn btn-primary">Sign Up</a>
                 </div>
             </div>
         </div>
@@ -217,12 +207,12 @@
             <!-- Search Form -->
             <div class="row mb-4">
                 <h3 class="text-white">Find Espees Vendors Near You</h3>
-                <div class="col-md-4"><input type="text" class="form-control" placeholder="Country..."
+                <div class="col-md-4 mb-3"><input type="text" class="form-control" placeholder="Country..."
                         x-model="search.country"></div>
-                <div class="col-md-4"><input type="text" class="form-control" placeholder="City..."
+                <div class="col-md-4 mb-3"><input type="text" class="form-control" placeholder="City..."
                         x-model="search.city">
                 </div>
-                <div class="col-md-4"><button class="btn btn-outline-light w-100" @click="filterVendors">Search
+                <div class="col-md-4 mb-3"><button class="btn btn-outline-light w-100" @click="filterVendors">Search
                         Locations</button>
                 </div>
             </div>
@@ -232,22 +222,43 @@
                 <div class="col-lg-8">
                     <div id="map" class="shadow-sm"></div>
                 </div>
-                <!-- Column 2: Search Results -->
+                <!-- Column 2: Search Results with Pagination -->
                 <div class="col-lg-4">
                     <h4 class="text-white" x-text="resultsTitle"></h4>
+                    <div x-show="loading" class="text-center p-4">Loading vendors...</div>
+
+                    <!-- This div will contain the paginated list -->
                     <div class="vendor-results">
-                        <template x-for="vendor in filteredVendors" :key="vendor.id">
-                            <div class="card bg-dark mb-3">
+                        <template x-for="vendor in paginatedVendors" :key="vendor.id">
+                            <div class="card bg-dark text-white mb-3">
                                 <div class="card-body">
-                                    <h5 class="card-title text-white" x-text="vendor.company_name"></h5>
-                                    <p class="card-text mb-1 text-white" x-text="`${vendor.address}, ${vendor.city}`">
-                                    </p>
-                                    <button class="btn btn-sm btn-link" @click="panToVendor(vendor)">View on
+                                    <h5 class="card-title" x-text="vendor.company_name"></h5>
+                                    <p class="card-text mb-1" x-text="`${vendor.address || ''}, ${vendor.city}`"></p>
+                                    <button class="btn btn-sm btn-link p-0" @click="panToVendor(vendor)">View on
                                         Map</button>
                                 </div>
                             </div>
                         </template>
+                        <div x-show="!loading && filteredVendors.length === 0" class="text-muted">No vendors found.
+                        </div>
                     </div>
+
+                    <!-- THE NEW PAGINATION CONTROLS -->
+                    <nav x-show="totalPages > 1" class="mt-3 d-flex justify-content-center">
+                        <ul class="pagination">
+                            <li class="page-item" :class="{ 'disabled': currentPage === 1 }">
+                                <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">Prev</a>
+                            </li>
+                            <template x-for="page in Array.from({ length: totalPages }, (_, i) => i + 1)">
+                                <li class="page-item" :class="{ 'active': page === currentPage }">
+                                    <a class="page-link" href="#" @click.prevent="changePage(page)" x-text="page"></a>
+                                </li>
+                            </template>
+                            <li class="page-item" :class="{ 'disabled': currentPage === totalPages }">
+                                <a class="page-link" href="#" @click.prevent="changePage(currentPage + 1)">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             </div>
         </div>

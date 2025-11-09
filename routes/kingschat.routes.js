@@ -14,10 +14,15 @@ const KINGSCHAT_API_URL = 'https://connect.kingsch.at/developer';
 // --- NEW KINGSCHAT LOGIN ROUTE ---
 router.post('/login', async (req, res) => {
     const { accessToken, refreshToken } = req.body;
-    if (!accessToken) return res.status(400).json({ message: 'KingsChat access token is required.' });
+    if (!accessToken) return res.status(400).json({
+        message: 'KingsChat access token is required.'
+    });
 
     try {
-        const profileResponse = await axios.get(`${KINGSCHAT_API_URL}/api/profile`, { headers: { 'authorization': `Bearer ${accessToken}` } });
+        const profileResponse = await axios.get(`${KINGSCHAT_API_URL}/api/profile`,
+            {
+                headers: { 'authorization': `Bearer ${accessToken}` }
+            });
         const kcProfile = profileResponse.data.profile;
         const userResult = await pool.query(
             `SELECT u.*, sp.id as sbo_profile_id
@@ -32,12 +37,19 @@ router.post('/login', async (req, res) => {
 
             if (refreshToken) {
                 await pool.query(
-                    `UPDATE users SET kingschat_access_token = $1, kingschat_refresh_token = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+                    `UPDATE users 
+                    SET kingschat_access_token = $1, 
+                    kingschat_refresh_token = $2, 
+                    updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = $3`,
                     [accessToken, refreshToken, user.id]
                 );
             } else {
                 await pool.query(
-                    `UPDATE users SET kingschat_access_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+                    `UPDATE users 
+                    SET kingschat_access_token = $1, 
+                    updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = $2`,
                     [accessToken, user.id]
                 );
             }
@@ -73,19 +85,9 @@ router.post('/login', async (req, res) => {
             });
 
         } else {
-            // This part for new users is unchanged
-            res.status(206).json({
-                message: 'No account is linked to this KingsChat profile. Please register.',
-                kc_profile: {
-                    firstName: kcProfile.name.split(' ')[0] || '',
-                    lastName: kcProfile.name.split(' ').slice(1).join(' ') || '',
-                    email: kcProfile.email,
-                    phoneNumber: kcProfile.phone_number,
-                    kingschatId: kcProfile.id,
-                    kingschatAvatarUrl: kcProfile.avatar,
-                    kingschatGender: kcProfile.gender,
-                }
-            });
+            // User Does NOT Exist: REJECT the login attempt.
+            // Send a 404 Not Found status with a clear message.
+            return res.status(404).json({ message: 'No account on our platform is linked to this KingsChat profile. Please create an account first.' });
         }
     } catch (error) {
         console.error('KingsChat login error:', error);

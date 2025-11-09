@@ -51,8 +51,9 @@
                                     data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
                                     In</button>
 
-                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
-
+                                <a x-data
+                                    :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
+                                    class="btn btn-gold">Sign Up</a>
                             </div>
                         </template>
 

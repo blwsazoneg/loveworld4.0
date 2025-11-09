@@ -93,7 +93,7 @@ document.addEventListener('alpine:init', () => {
             this.loggedIn = true;
             localStorage.setItem('token', this.token);
             localStorage.setItem('user', JSON.stringify(this.user));
-            console.log('Login successful. User state updated:', this.user);
+            // console.log('Login successful. User state updated:', this.user);
         },
 
         // Checks localStorage when the app loads to see if the user is already logged in
@@ -104,7 +104,7 @@ document.addEventListener('alpine:init', () => {
                 this.token = token;
                 this.user = JSON.parse(user);
                 this.loggedIn = true;
-                console.log('User initialized from localStorage:', this.user);
+                // console.log('User initialized from localStorage:', this.user);
             }
         },
 
@@ -161,7 +161,21 @@ document.addEventListener('alpine:init', () => {
         kc_profile_id: null,
         kc_avatar_url: null,
 
+        notFoundModal: null,
+        // --- NEW PROPERTY to hold the modal instance ---
+        modalInstance: null,
+
         init() {
+
+            this.$nextTick(() => {
+                this.notFoundModal = new bootstrap.Modal(document.getElementById('accountNotFoundModal'));
+            });
+
+            this.$nextTick(() => {
+                // this.$el refers to the <div class="modal..."> element
+                this.modalInstance = new bootstrap.Modal(this.$el);
+            });
+
             // Listen for the custom 'session-expired' event from our interceptor
             window.addEventListener('session-expired', () => {
                 // Set a clear message for the user
@@ -175,27 +189,47 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
+        // A new helper function to show the "Not Found" modal
+        showNotFoundModal(message) {
+            // Set the message
+            document.getElementById('notFoundMessageContent').textContent = message;
+            // Show the modal
+            this.notFoundModal.show();
+        },
+
+        // --- UPDATED loginWithKingsChat FUNCTION ---
         async loginWithKingsChat() {
-            this.loginMessage = 'Connecting to KingsChat...'; this.loginError = false;
-            const loginOptions = { scopes: ["profile"], clientId: 'b2b522e9-d602-402d-b61d-8a50825862da' };
+            this.loginMessage = 'Connecting to KingsChat...';
+            this.loginError = false;
             try {
+                const loginOptions = {
+                    scopes: ["profile"],
+                    clientId: 'b2b522e9-d602-402d-b61d-8a50825862da'
+                };
                 const response = await window.kingsChatWebSdk.login(loginOptions);
                 const { accessToken, refreshToken } = response;
                 if (!accessToken) throw new Error("Access Token not found.");
+
                 const backendResponse = await axios.post('/api/kingschat/login', { accessToken, refreshToken });
+
                 Alpine.store('auth').handleSuccessfulLogin(backendResponse.data);
-                this.loginMessage = backendResponse.data.message; this.loginError = false;
-                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('signInUpModal'));
-                if (modalInstance) modalInstance.hide();
+                this.loginMessage = backendResponse.data.message;
+                this.loginError = false;
+
+
+                // THE FIX: Use the stored modal instance
+                if (this.modalInstance) {
+                    this.modalInstance.hide();
+                }
             } catch (error) {
-                if (error.response && error.response.status === 206) {
-                    const kc_profile = error.response.data.kc_profile;
-                    this.firstName = kc_profile.firstName; this.lastName = kc_profile.lastName;
-                    this.email = kc_profile.email; this.phoneNumber = kc_profile.phoneNumber;
-                    this.kc_profile_id = kc_profile.kingschatId; this.kc_avatar_url = kc_profile.kingschatAvatarUrl;
-                    this.registerMessage = 'Profile found! Please complete your registration.'; this.registerError = false;
-                    this.showRegisterForm = true;
+                // THE FIX: Check for the 404 error
+                if (error.response && error.response.status === 404) {
+                    // If 404, hide the login modal and show our new "Not Found" modal
+                    const modalInstance = bootstrap.Modal.getInstance(this.$el);
+                    if (modalInstance) modalInstance.hide();
+                    this.showNotFoundModal(error.response.data.message);
                 } else {
+                    // Handle all other errors as before
                     this.loginMessage = error.response ? error.response.data.message : 'KingsChat login failed.';
                     this.loginError = true;
                 }
@@ -203,32 +237,92 @@ document.addEventListener('alpine:init', () => {
         },
 
         async handleRegister() {
+            this.registerMessage = '';
+            this.registerError = false;
+
             if (this.password !== this.confirmPassword) {
-                this.registerMessage = 'Passwords do not match.'; this.registerError = true;
+                this.registerMessage = 'Passwords do not match.';
+                this.registerError = true;
                 return;
             }
+
             const userData = {
-                firstName: this.firstName, lastName: this.lastName, dateOfBirth: this.dateOfBirth,
-                email: this.email, phoneNumber: this.phoneNumber, username: this.username, password: this.password,
+                firstName: this.firstName,
+                lastName: this.lastName,
+                dateOfBirth: this.dateOfBirth,
+                email: this.email,
+                phoneNumber: this.phoneNumber,
+                username: this.username,
+                password: this.password,
                 kingschat_id: this.kc_profile_id
             };
-            const result = await registerUser(userData);
-            if (result.success) {
-                this.registerMessage = result.data.message + " You can now log in."; this.registerError = false;
-                this.showRegisterForm = false;
-            } else {
-                this.registerMessage = result.message; this.registerError = true;
+
+            try {
+                const result = await registerUser(userData);
+
+                if (result.success) {
+                    // --- THIS IS THE NEW LOGIC ---
+
+                    // 1. Automatically log the user in on the frontend
+                    Alpine.store('auth').handleSuccessfulLogin(result.data);
+
+                    this.registerMessage = 'Registration successful! Redirecting...';
+                    this.registerError = false;
+
+                    // 2. Check for a redirect URL in the query parameters
+                    const params = new URLSearchParams(window.location.search);
+                    const redirectUrl = params.get('redirect');
+
+                    // 3. Redirect the user
+                    setTimeout(() => {
+                        if (redirectUrl) {
+                            // If a redirect URL exists, send them back to that page
+                            window.location.href = redirectUrl;
+                        } else {
+                            // Otherwise, send them to a default logged-in page (like their profile)
+                            window.location.href = '/profile.html';
+                        }
+                    }, 1500); // Wait a moment for them to see the success message
+
+                } else {
+                    // This 'else' is for when registerUser returns { success: false }
+                    this.registerMessage = result.message;
+                    this.registerError = true;
+                }
+            } catch (error) {
+                // This 'catch' is for network errors or server crashes
+                this.registerMessage = error.response?.data?.message || 'An unexpected error occurred during registration.';
+                this.registerError = true;
             }
         },
 
         async handleLogin() {
-            const result = await Alpine.store('auth').login(this.loginIdentifier, this.loginPassword);
-            if (result.success) {
-                this.loginMessage = result.message; this.loginError = false;
-                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('signInUpModal'));
-                if (modalInstance) modalInstance.hide();
-            } else {
-                this.loginMessage = result.message; this.loginError = true;
+            this.loginMessage = ''; this.loginError = false;
+            try {
+                const result = await Alpine.store('auth').login(this.loginIdentifier, this.loginPassword);
+                if (result.success) {
+                    this.loginMessage = result.message;
+                    this.loginError = false;
+
+                    // THE FIX: Use the stored modal instance
+                    if (this.modalInstance) {
+                        this.modalInstance.hide();
+                    }
+                } else {
+                    // The 'login' function in the store returns the error message
+                    this.loginMessage = result.message;
+                    this.loginError = true;
+                }
+            } catch (error) {
+                // THE FIX: Check for the 404 error here as well
+                if (error.response && error.response.status === 404) {
+                    const modalInstance = bootstrap.Modal.getInstance(this.$el);
+                    if (modalInstance) modalInstance.hide();
+                    this.showNotFoundModal(error.response.data.message);
+                } else {
+                    this.loginMessage = error.response?.data?.message || 'An unexpected error occurred.';
+                    this.loginError = true;
+                }
             }
         }
     }));
@@ -1207,7 +1301,7 @@ document.addEventListener('alpine:init', () => {
         _updateState(cartItems) {
             this.items = cartItems;
             this.itemCount = this.items.reduce((total, item) => total + item.quantity, 0);
-            console.log('Cart state updated. Item count:', this.itemCount);
+            // console.log('Cart state updated. Item count:', this.itemCount);
         },
 
         async initialize() {
@@ -2511,13 +2605,17 @@ document.addEventListener('alpine:init', () => {
 
     // 32
     Alpine.data('vendorLocatorPage', () => ({
-        allVendors: [],
-        filteredVendors: [],
+        allVendors: [],      // Holds ALL vendors fetched from the API
+        filteredVendors: [], // Holds the vendors that match the current search
         map: null,
         markers: null,
         loading: true,
-        search: { country: '', city: '', postalCode: '' },
+        search: { country: '', city: '' },
         resultsTitle: 'All Vendors',
+
+        // --- NEW PAGINATION STATE ---
+        currentPage: 1,
+        itemsPerPage: 8, // Show 8 vendors per page in the list
 
         init() {
             this.initializeMap();
@@ -2539,24 +2637,19 @@ document.addEventListener('alpine:init', () => {
             try {
                 const response = await axios.get('/api/vendors');
                 this.allVendors = response.data;
-                this.filteredVendors = this.allVendors;
-                this.populateMap();
+                this.filterVendors(); // Initial filter to populate the list and map
             } catch (err) { console.error('Failed to fetch vendors', err); }
             finally { this.loading = false; }
         },
 
         populateMap() {
-            this.markers.clearLayers(); // Clear old markers
+            this.markers.clearLayers();
+            // The map ALWAYS shows pins for ALL filtered vendors, not just the paginated ones
             this.filteredVendors.forEach(vendor => {
                 const marker = L.marker([vendor.latitude, vendor.longitude]);
-                marker.bindPopup(`
-                <b>${vendor.company_name}</b><br>
-                ${vendor.address}<br>
-                <em>${vendor.sector_name || ''}</em>
-            `);
+                marker.bindPopup(`<b>${vendor.company_name}</b><br>${vendor.address}`);
                 this.markers.addLayer(marker);
             });
-            // Fit map to the bounds of the visible markers
             if (this.filteredVendors.length > 0) {
                 this.map.fitBounds(this.markers.getBounds().pad(0.1));
             }
@@ -2564,17 +2657,42 @@ document.addEventListener('alpine:init', () => {
 
         filterVendors() {
             const { country, city } = this.search;
-            this.filteredVendors = this.allVendors.filter(vendor => {
-                const countryMatch = country ? vendor.country.toLowerCase().includes(country.toLowerCase()) : true;
-                const cityMatch = city ? vendor.city.toLowerCase().includes(city.toLowerCase()) : true;
-                return countryMatch && cityMatch;
-            });
-            this.resultsTitle = `Vendors in ${city || country || 'Search Results'}`;
-            this.populateMap(); // Re-populate the map with filtered results
+            if (!country && !city) {
+                this.filteredVendors = this.allVendors;
+                this.resultsTitle = 'All Vendors';
+            } else {
+                this.filteredVendors = this.allVendors.filter(vendor => {
+                    const countryMatch = country ? vendor.country.toLowerCase().includes(country.toLowerCase()) : true;
+                    const cityMatch = city ? vendor.city.toLowerCase().includes(city.toLowerCase()) : true;
+                    return countryMatch && cityMatch;
+                });
+                this.resultsTitle = `Vendors in ${city || country}`;
+            }
+            this.currentPage = 1; // ALWAYS reset to page 1 after a new search
+            this.populateMap(); // Update the map with the new set of filtered pins
         },
 
         panToVendor(vendor) {
             this.map.setView([vendor.latitude, vendor.longitude], 15); // Zoom in on the selected vendor
+        },
+
+        // --- NEW COMPUTED PROPERTIES FOR PAGINATION ---
+        get totalPages() {
+            return Math.ceil(this.filteredVendors.length / this.itemsPerPage);
+        },
+
+        get paginatedVendors() {
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            const end = start + this.itemsPerPage;
+            return this.filteredVendors.slice(start, end);
+        },
+
+        // --- NEW FUNCTION TO CHANGE THE PAGE ---
+        changePage(page) {
+            if (page < 1 || page > this.totalPages) return;
+            this.currentPage = page;
+            // Scroll the results list to the top when changing pages
+            this.$el.querySelector('.vendor-results').scrollTop = 0;
         }
     }));
 
@@ -2654,7 +2772,7 @@ document.addEventListener('alpine:init', () => {
             this.formData = { id: null, company_name: '', address: '', city: '', country: '', postal_code: '', sector_name: '' };
             this.formMessage = '';
         },
-        
+
         cancelEdit() {
             this.isEditing = false;
             this.formData = { id: null, company_name: '', address: '', city: '', country: '', postal_code: '', sector_id: '' };

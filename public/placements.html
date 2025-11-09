@@ -53,8 +53,9 @@
                                     data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
                                     In</button>
 
-                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
-
+                                <a x-data
+                                    :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
+                                    class="btn btn-gold">Sign Up</a>
                             </div>
                         </template>
 
@@ -132,47 +133,36 @@
                                 required>
                             <button type="submit" class="btn-login">Login</button>
                         </form>
-                        <p class="create-account-link">
-                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
-                        </p>
+                        <br>
+                        <p class="text-center text-white fw-bold">OR</p>
                         <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
 
                         <div x-show="loginMessage" class="alert mt-3"
                             :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <!-- Registration Form View -->
-                    <div x-show="showRegisterForm" class="login-form-container"
-                        style="color: #333; background: #fff; border-radius: 10px;">
-                        <!-- We will re-style this form later to match the new theme -->
-                        <!-- For now, we wrap it in a white box to keep it readable -->
-                        <h2 style="color: #333;">Create Your Account</h2>
-                        <form @submit.prevent="handleRegister">
-                            <!-- Paste the full registration form fields here -->
-                            <div class="row mb-2">
-                                <div class="col"><input type="text" x-model="firstName" class="form-control"
-                                        placeholder="First Name" required></div>
-                                <div class="col"><input type="text" x-model="lastName" class="form-control"
-                                        placeholder="Last Name" required></div>
-                            </div>
-                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
-                                    placeholder="Email" required></div>
-                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
-                                    placeholder="Username" required></div>
-                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
-                                    placeholder="Password" required></div>
-                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
-                                    placeholder="Confirm Password" required></div>
 
-                            <button type="submit" class="btn-login">Register</button>
-                        </form>
-                        <p class="create-account-link" style="color: #666;">
-                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
-                                style="color: #007bff;">Login here</a>
-                        </p>
-                        <div x-show="registerMessage" class="alert mt-3"
-                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
-                    </div>
+    <!-- ======================================================= -->
+    <!-- NEW: ACCOUNT NOT FOUND MODAL                            -->
+    <!-- ======================================================= -->
+    <div class="modal fade" id="accountNotFoundModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Account Not Found</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p x-data="{ notFoundMessage: '' }" x-text="notFoundMessage" id="notFoundMessageContent"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a x-data :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
+                        class="btn btn-primary">Sign Up</a>
                 </div>
             </div>
         </div>
@@ -365,7 +355,21 @@
                         <h4>No openings found</h4>
                         <p class="text-muted">Try adjusting your search terms or check back later to connect.</p>
                     </div>
-                    <!-- Pagination would go here if needed -->
+                    <nav x-show="totalPages > 1" class="mt-5 d-flex justify-content-center">
+                        <ul class="pagination">
+                            <li class="page-item" :class="{ 'disabled': currentPage === 1 }">
+                                <a class="page-link" href="#" @click.prevent="fetchJobs(currentPage - 1)">Previous</a>
+                            </li>
+                            <template x-for="page in Array.from({ length: totalPages }, (_, i) => i + 1)">
+                                <li class="page-item" :class="{ 'active': page === currentPage }">
+                                    <a class="page-link" href="#" @click.prevent="fetchJobs(page)" x-text="page"></a>
+                                </li>
+                            </template>
+                            <li class="page-item" :class="{ 'disabled': currentPage === totalPages }">
+                                <a class="page-link" href="#" @click.prevent="fetchJobs(currentPage + 1)">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             </div>
         </section>

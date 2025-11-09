@@ -1,13 +1,11 @@
-
-/* 1. The semi-transparent backdrop */
-/* .modal-backdrop {
-    background-color: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(1000px);
-} */
-
 .modal {
     background-color: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(5px);
+}
+
+#accountNotFoundModal {
+    background-color: #b8860b;
+    color: #fff;
 }
 
 .btn-close {

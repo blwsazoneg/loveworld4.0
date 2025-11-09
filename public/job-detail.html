@@ -60,8 +60,9 @@
                                     data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
                                     In</button>
 
-                                <a href="/signup.html" class="btn btn-gold">Sign Up</a>
-
+                                <a x-data
+                                    :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
+                                    class="btn btn-gold">Sign Up</a>
                             </div>
                         </template>
 
@@ -126,7 +127,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" aria-label="Close">X</button>
                 </div>
                 <div class="modal-body">
                     <!-- Login Form View -->
@@ -139,45 +140,36 @@
                                 required>
                             <button type="submit" class="btn-login">Login</button>
                         </form>
-                        <p class="create-account-link">
-                            New here? <a href="#" @click.prevent="showRegisterForm = true">Create an account</a>
-                        </p>
-
-                        <!-- THIS IS THE CORRECTED BUTTON -->
+                        <br>
+                        <p class="text-center text-white fw-bold">OR</p>
                         <button class="kc-web-sdk-btn" @click.prevent="loginWithKingsChat()"></button>
 
                         <div x-show="loginMessage" class="alert mt-3"
                             :class="loginError ? 'alert-danger' : 'alert-success'" x-text="loginMessage"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <!-- Registration Form View (Simplified for clarity, expand as needed) -->
-                    <div x-show="showRegisterForm" class="login-form-container"
-                        style="color: #333; background: #fff; border-radius: 10px;">
-                        <h2 style="color: #333;">Create Your Account</h2>
-                        <form @submit.prevent="handleRegister">
-                            <div class="row mb-2">
-                                <div class="col"><input type="text" x-model="firstName" class="form-control"
-                                        placeholder="First Name" required></div>
-                                <div class="col"><input type="text" x-model="lastName" class="form-control"
-                                        placeholder="Last Name" required></div>
-                            </div>
-                            <div class="mb-2"><input type="email" x-model="email" class="form-control"
-                                    placeholder="Email" required></div>
-                            <div class="mb-2"><input type="text" x-model="username" class="form-control"
-                                    placeholder="Username" required></div>
-                            <div class="mb-2"><input type="password" x-model="password" class="form-control"
-                                    placeholder="Password" required></div>
-                            <div class="mb-2"><input type="password" x-model="confirmPassword" class="form-control"
-                                    placeholder="Confirm Password" required></div>
-                            <button type="submit" class="btn-login">Register</button>
-                        </form>
-                        <p class="create-account-link" style="color: #666;">
-                            Already have an account? <a href="#" @click.prevent="showRegisterForm = false"
-                                style="color: #007bff;">Login here</a>
-                        </p>
-                        <div x-show="registerMessage" class="alert mt-3"
-                            :class="registerError ? 'alert-danger' : 'alert-success'" x-text="registerMessage"></div>
-                    </div>
+
+    <!-- ======================================================= -->
+    <!-- NEW: ACCOUNT NOT FOUND MODAL                            -->
+    <!-- ======================================================= -->
+    <div class="modal fade" id="accountNotFoundModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Account Not Found</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p x-data="{ notFoundMessage: '' }" x-text="notFoundMessage" id="notFoundMessageContent"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a x-data :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
+                        class="btn btn-primary">Sign Up</a>
                 </div>
             </div>
         </div>
