@@ -286,7 +286,7 @@
             <!-- LAYOUT 1: Default (Bestsellers, New Arrivals)           -->
             <!-- Show this if the sector name is NOT 'Food & Beverage'   -->
             <!-- ======================================================= -->
-            <template x-if="sector.name">
+            <template x-if="sector.name !== 'Food & Beverage'">
                 <div class="row">
                     <!-- Column 1: Weekly Bestsellers -->
                     <div class="col-lg-4">
@@ -343,8 +343,9 @@
             <!-- LAYOUT 2: Food & Beverage                               -->
             <!-- Show this ONLY if the sector name IS 'Food & Beverage'  -->
             <!-- ======================================================= -->
-            <!-- <template x-if="sector.name === 'Food & Beverage'">
+            <template x-if="sector.name === 'Food & Beverage'">
                 <div class="row">
+                    <!-- Column 1: Family Feasts -->
                     <div class="col-lg-4">
                         <div class="sector-column bg-white">
                             <h4>Family Feasts</h4>
@@ -358,6 +359,7 @@
                         </div>
                     </div>
 
+                    <!-- Column 2: Fruits & Vegetables -->
                     <div class="col-lg-4">
                         <div class="sector-column bg-white">
                             <h4>Fruits & Vegetables</h4>
@@ -371,6 +373,7 @@
                         </div>
                     </div>
 
+                    <!-- Column 3: Order Now (Shared) -->
                     <div class="col-lg-4">
                         <div class="sector-column bg-gold-gradient position-relative">
                             <h4>Order Now</h4>
@@ -390,7 +393,7 @@
                         </div>
                     </div>
                 </div>
-            </template> -->
+            </template>
         </div>
     </div>
 
