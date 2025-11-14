@@ -1,76 +1,64 @@
-// public/js/utils.js
-const introPages = [
-    'index.html',
-    'explore-the-loveworld-economy.html',
-    'shop-made-in-loveworld.html',
-    'discover-placements.html',
-    'bring-innovations.html'
+// public/js/utils.js (NEW SINGLE-PAGE VERSION)
+
+let introTimer = null;
+let currentIndex = 0;
+
+// This is now an array of the text strings to display
+const introTexts = [
+    "Welcome to Loveworld 4.0",
+    "Explore the Loveworld Economy",
+    "Shop Made in Loveworld",
+    "Discover Strategic Placements",
+    "Bring Innovations to Life"
 ];
 
-// Make the timer variable accessible in this file
-let introTimer = null;
+// Function to start or continue the text animation cycle
+export function startIntroCycle() {
+    // Clear any existing timer to prevent overlaps
+    stopIntroTimer();
 
-export function startIntroTimer(currentPageFileName) {
-    // Clear any existing timer before starting a new one
-    if (introTimer) clearTimeout(introTimer);
+    // Get the HTML element where the text is displayed
+    const textElement = document.getElementById('animated-text');
+    if (!textElement) return;
 
-    introTimer = setTimeout(() => {
-        applyPageExitAnimation(() => {
-            navigateToNextIntroPage(currentPageFileName);
-        });
-    }, 3000); // 3 seconds
+    // --- Main Animation Logic ---
+    function animateText() {
+        // 1. Apply the exit animation to the current text
+        textElement.classList.add('slide-up-fade-out');
+
+        // 2. Wait for the exit animation to finish
+        setTimeout(() => {
+            // 3. Increment the index
+            currentIndex++;
+
+            // 4. Check if we've reached the end of the text array
+            if (currentIndex >= introTexts.length) {
+                // If yes, navigate to the main information page
+                window.location.href = '/information.html';
+                return; // Stop the cycle
+            }
+
+            // 5. If not at the end, update the text content
+            textElement.textContent = introTexts[currentIndex];
+
+            // 6. Remove the exit animation class and trigger the entry animation
+            textElement.classList.remove('slide-up-fade-out');
+
+            // 7. Set the next timer
+            introTimer = setTimeout(animateText, 3000);
+
+        }, 500); // This delay should match the animation duration in the CSS
+    }
+
+    // Start the first timer
+    introTimer = setTimeout(animateText, 3000);
 }
 
+// Function to stop the timer (e.g., when the modal opens)
 export function stopIntroTimer() {
     if (introTimer) {
-        console.log("Intro timer paused.");
         clearTimeout(introTimer);
-    }
-}
-
-export function navigateToNextIntroPage(currentFileName) {
-    const currentIndex = introPages.indexOf(currentFileName);
-    if (currentIndex !== -1 && currentIndex < introPages.length - 1) {
-        const nextFileName = introPages[currentIndex + 1];
-        window.location.href = `/${nextFileName}`;
-    } else {
-        // All intro pages shown, navigate to the main information page
-        window.location.href = '/information.html'; // We'll create this next
-    }
-}
-
-// getCurrentPageIndex is now less critical for this specific navigation,
-// but can remain for other potential uses if needed.
-export function getCurrentPageIndex() {
-    const path = window.location.pathname;
-    const currentFileName = path.substring(path.lastIndexOf('/') + 1);
-    return introPages.indexOf(currentFileName);
-}
-
-
-// Function to handle page transitions (slide up + fade) - remains the same
-export function applyPageExitAnimation(callback) {
-    // THE FIX: Target only the element with the .animated-text class
-    const elementToAnimate = document.querySelector('.animated-text');
-
-    if (elementToAnimate) {
-        // Apply the exit animation class to the text
-        elementToAnimate.classList.add('slide-up-fade-out');
-
-        // Wait for the text's animation to complete before navigating
-        elementToAnimate.addEventListener('animationend', () => {
-            callback();
-        }, { once: true });
-    } else {
-        callback(); // If no animated element, just navigate immediately
-    }
-}
-
-// Function to reset initial animations for new page load (if reusing JS) - remains the same
-export function resetPageEntryAnimation() {
-    const container = document.querySelector('.container');
-    if (container) {
-        container.classList.remove('slide-up-fade-out');
-        container.classList.add('fade-in');
+        introTimer = null;
+        console.log("Intro cycle paused.");
     }
 }

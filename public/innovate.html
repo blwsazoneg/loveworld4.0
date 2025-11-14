@@ -80,7 +80,7 @@
 <body x-data>
 
     <nav class="navbar navbar-expand-lg bg-black">
-        <div class="container-fluid">
+        <div class="container-fluid container">
             <a class="navbar-brand text-gold" href="/">
                 <img src="/images/lw4.0-logo.png" alt="LW 4.0 Logo" height="60" width="60"
                     class="d-inline-block align-text-top">
@@ -90,30 +90,33 @@
                 aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+            <!-- <div class="collapse navbar-collapse justify-content-center" id="navbarNav"> -->
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+
                 <ul class="navbar-nav">
-                    <li class="nav-item">
+                    <li class="nav-item me-4">
                         <a class="nav-link text-gold" aria-current="page" href="/information.html">Home</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item me-4">
                         <a class="nav-link text-gold" href="/vendor-locator.html">Espees Vendors</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item me-4">
                         <a class="nav-link text-gold" href="/shop.html">Shop</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item me-4">
                         <a class="nav-link text-gold" href="/placements.html">Placements</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item me-4">
                         <a class="nav-link text-gold active" href="/innovate.html">Innovate</a>
                     </li>
                     <div class="d-flex align-items-center" x-data x-cloak>
                         <!-- Show these buttons if user is NOT logged in -->
                         <template x-if="!$store.auth.loggedIn">
                             <div class="d-flex">
-                                <button class="btn btn-outline-gold me-2" data-bs-toggle="modal"
+                                <button class="btn btn-outline-gold me-4" data-bs-toggle="modal"
                                     data-bs-target="#signInUpModal" @click="$data.showRegisterForm = false">Sign
                                     In</button>
+
 
                                 <a x-data
                                     :href="`/signup.html?redirect=${encodeURIComponent(window.location.pathname)}`"
@@ -203,16 +206,15 @@
 
 
                     <!-- Show login prompt if not logged in -->
-                    <div x-show="!$store.auth.loggedIn" class="text-center p-5 bg-dark text-white rounded">
+                    <div x-show="!$store.auth.loggedIn" class="text-center text-dark">
                         <h3>Please log in to submit</h3>
                         <p>You need to be logged in to submit an innovation.</p>
-                        <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#signInUpModal">Login or
-                            Sign
-                            Up</button>
+                        <button class="btn btn-dark" data-bs-toggle="modal"
+                            data-bs-target="#signInUpModal">Login</button>
                     </div>
 
                     <!-- Show form if logged in -->
-                    <div x-show="$store.auth.loggedIn" class="card bg-dark text-white">
+                    <div x-show="$store.auth.loggedIn" class="card bg-dark text-white" x-cloak>
                         <div class="card-body p-4">
                             <form @submit.prevent="handleSubmit">
                                 <p class="text-center pb-5">Complete the details below to connect with our Loveworld
