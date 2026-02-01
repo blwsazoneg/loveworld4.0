@@ -17,44 +17,45 @@ router.get('/my-orders', authenticateToken, async (req, res) => {
 
     try {
         // Start building the query and parameters
-        let baseQuery = 'FROM orders WHERE user_id = $1';
+        let baseQuery = 'FROM orders WHERE user_id = ?';
         const queryParams = [userId];
 
         // Append search conditions if a search term exists
         if (searchTerm) {
+            // Check if search term is a number (for ID search)
             if (!isNaN(searchTerm)) {
                 queryParams.push(searchTerm);
-                baseQuery += ` AND id = $${queryParams.length}`;
+                baseQuery += ` AND id = ?`;
             } else {
                 queryParams.push(`${searchTerm}%`);
-                baseQuery += ` AND CAST(created_at AS TEXT) ILIKE $${queryParams.length}`;
+                // MySQL cast created_at to char
+                baseQuery += ` AND CAST(created_at AS CHAR) LIKE ?`;
             }
         }
 
-        // --- THE FIX IS HERE ---
-        // We now build the final queries using the same base
-
         // 1. Build the query to get the total count
-        const countQuery = `SELECT COUNT(*) ${baseQuery}`;
-        const totalResult = await pool.query(countQuery, queryParams);
-        const totalOrders = parseInt(totalResult.rows[0].count);
+        const countQuery = `SELECT COUNT(*) as count ${baseQuery}`;
+        // We need to use execute/query. Since we are building dynamic query with params, execute works if params match ? count.
+        // For dynamic queries relying on appending ?, `pool.query` in mysql2 is often safer or ensuring order correct.
+        // Here params order is preserved.
+        const [totalResult] = await pool.query(countQuery, queryParams);
+        const totalOrders = parseInt(totalResult[0]?.count || 0);
         const totalPages = Math.ceil(totalOrders / limit);
 
         // 2. Build the main query to get the paginated data
-        // Add the ORDER BY, LIMIT, and OFFSET clauses with correct parameter placeholders
         queryParams.push(limit);
         queryParams.push(offset);
         const mainQuery = `
             SELECT id, total_amount, status, created_at 
             ${baseQuery} 
             ORDER BY created_at DESC 
-            LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}
+            LIMIT ? OFFSET ?
         `;
 
-        const ordersResult = await pool.query(mainQuery, queryParams);
+        const [ordersResult] = await pool.query(mainQuery, queryParams);
 
         res.status(200).json({
-            orders: ordersResult.rows,
+            orders: ordersResult,
             currentPage: page,
             totalPages: totalPages
         });
@@ -73,27 +74,27 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
         // 1. Fetch the main order details and verify the user owns it
-        const orderResult = await pool.query(
-            'SELECT * FROM orders WHERE id = $1 AND user_id = $2',
+        const [orderResult] = await pool.execute(
+            'SELECT * FROM orders WHERE id = ? AND user_id = ?',
             [orderId, userId]
         );
 
-        if (orderResult.rows.length === 0) {
+        if (orderResult.length === 0) {
             return res.status(404).json({ message: 'Order not found or you do not have permission to view it.' });
         }
-        const order = orderResult.rows[0];
+        const order = orderResult[0];
 
         // 2. Fetch the items associated with this order
-        const itemsResult = await pool.query(
+        const [itemsResult] = await pool.execute(
             `SELECT oi.quantity, oi.price_at_purchase, p.name, 
             (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
              FROM order_items oi
              JOIN products p ON oi.product_id = p.id
-             WHERE oi.order_id = $1`,
+             WHERE oi.order_id = ?`,
             [orderId]
         );
 
-        order.items = itemsResult.rows;
+        order.items = itemsResult;
         res.status(200).json(order);
     } catch (error) {
         console.error('Error fetching order details:', error);

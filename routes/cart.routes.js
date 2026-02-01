@@ -7,13 +7,20 @@ import { getActivePricesForProducts } from '../utils/product.helpers.js';
 const router = express.Router();
 
 // Helper function to get or create a cart for the logged-in user
-const getOrCreateCart = async (userId, client = pool) => {
-    let cartResult = await client.query('SELECT id FROM carts WHERE user_id = $1', [userId]);
-    if (cartResult.rows.length === 0) {
+const getOrCreateCart = async (userId, connection) => {
+    // If no connection is passed, use a new one from pool (implied usage below handles this)
+    // But better to pass connection if in transaction.
+    const db = connection || pool;
+    // pool.execute returns [rows]. connection.execute returns [rows].
+
+    let [cartResult] = await db.execute('SELECT id FROM carts WHERE user_id = ?', [userId]);
+    if (cartResult.length === 0) {
         // If no cart exists, create one
-        cartResult = await client.query('INSERT INTO carts (user_id) VALUES ($1) RETURNING id', [userId]);
+        const [insertResult] = await db.execute('INSERT INTO carts (user_id) VALUES (?)', [userId]);
+        // Return correct ID
+        return insertResult.insertId;
     }
-    return cartResult.rows[0].id;
+    return cartResult[0].id;
 };
 
 // @route   POST /api/cart/items
@@ -24,19 +31,19 @@ router.post('/items', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     if (!productId || !quantity || quantity < 1) return res.status(400).json({ message: 'Invalid request.' });
 
-    const client = await pool.connect();
+    const connection = await pool.getConnection(); // Use manual connection for transaction
     try {
-        await client.query('BEGIN');
+        await connection.beginTransaction();
 
         // 1. GET THE CURRENT STOCK AND PRODUCT INFO
-        const productResult = await client.query('SELECT stock_quantity, allow_backorder FROM products WHERE id = $1', [productId]);
-        if (productResult.rows.length === 0) throw new Error('Product not found.');
-        const { stock_quantity, allow_backorder } = productResult.rows[0];
+        const [productResult] = await connection.execute('SELECT stock_quantity, allow_backorder FROM products WHERE id = ?', [productId]);
+        if (productResult.length === 0) throw new Error('Product not found.');
+        const { stock_quantity, allow_backorder } = productResult[0];
 
         // 2. GET CURRENT QUANTITY IN CART
-        const cartId = await getOrCreateCart(userId, client); // Pass client for transaction
-        const cartItemResult = await client.query('SELECT quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2', [cartId, productId]);
-        const quantityInCart = cartItemResult.rows.length > 0 ? cartItemResult.rows[0].quantity : 0;
+        const cartId = await getOrCreateCart(userId, connection); // Pass connection
+        const [cartItemResult] = await connection.execute('SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?', [cartId, productId]);
+        const quantityInCart = cartItemResult.length > 0 ? cartItemResult[0].quantity : 0;
 
         // 3. VALIDATE THE REQUEST
         const requestedTotal = quantityInCart + quantity;
@@ -46,21 +53,33 @@ router.post('/items', authenticateToken, async (req, res) => {
         }
 
         // 4. PERFORM THE UPSERT
+        // MySQL uses ON DUPLICATE KEY UPDATE.
+        // Assuming (cart_id, product_id) is unique/PK.
         const query = `
-            INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ($1, $2, $3)
-            ON CONFLICT (cart_id, product_id) DO UPDATE SET quantity = cart_items.quantity + $3
-            RETURNING *;`;
-        const newItem = await client.query(query, [cartId, productId, quantity]);
+            INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)`;
+        // In MySQL 8.0.20+ VALUES() is deprecated, use aliases.
+        // INSERT INTO ... VALUES (?,?,?) AS new ON DUPLICATE KEY UPDATE quantity = quantity + new.quantity
+        // Or simple `quantity = quantity + ?` passing quantity again?
+        // Let's use standard VALUES for compatibility or just `quantity = quantity + ?` logic.
+        // Actually `quantity = quantity + ?` implies adding the new amount. Yes.
 
-        await client.query('COMMIT');
-        res.status(201).json({ message: 'Item added to cart.', item: newItem.rows[0] });
+        await connection.execute('INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + ?', [cartId, productId, quantity, quantity]);
+        // We can't easily "RETURNING *" in MySQL.
+        // But we can just return what we put in or fetch it.
+        // Fetched data is often needed for frontend state.
+
+        const [newItem] = await connection.execute('SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ?', [cartId, productId]);
+
+        await connection.commit();
+        res.status(201).json({ message: 'Item added to cart.', item: newItem[0] });
 
     } catch (error) {
-        await client.query('ROLLBACK');
+        await connection.rollback();
         console.error('Error adding item to cart:', error);
         res.status(400).json({ message: error.message }); // Send the specific error message to the frontend
     } finally {
-        client.release();
+        connection.release();
     }
 });
 
@@ -70,16 +89,16 @@ router.post('/items', authenticateToken, async (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
-        const cartId = await getOrCreateCart(userId);
+        const cartId = await getOrCreateCart(userId, pool); // Pass pool as 'connection'
 
         // 1. Get the items in the cart
-        const cartItemsResult = await pool.query(
+        const [cartItemsResult] = await pool.execute(
             `SELECT ci.product_id, ci.quantity, p.name, 
             (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
              FROM cart_items ci JOIN products p ON ci.product_id = p.id
-             WHERE ci.cart_id = $1`, [cartId]
+             WHERE ci.cart_id = ?`, [cartId]
         );
-        const items = cartItemsResult.rows;
+        const items = cartItemsResult;
 
         // 2. Get the current, active prices for all products in the cart
         const productIds = items.map(item => item.product_id);
@@ -113,16 +132,16 @@ router.put('/items/:productId', authenticateToken, async (req, res) => {
     if (!quantity || quantity < 1) return res.status(400).json({ message: 'Invalid quantity.' });
 
     try {
-        const productResult = await pool.query('SELECT stock_quantity, allow_backorder FROM products WHERE id = $1', [productId]);
-        if (productResult.rows.length === 0) return res.status(404).json({ message: 'Product not found.' });
-        const { stock_quantity, allow_backorder } = productResult.rows[0];
+        const [productResult] = await pool.execute('SELECT stock_quantity, allow_backorder FROM products WHERE id = ?', [productId]);
+        if (productResult.length === 0) return res.status(404).json({ message: 'Product not found.' });
+        const { stock_quantity, allow_backorder } = productResult[0];
 
         if (quantity > stock_quantity && !allow_backorder) {
             return res.status(400).json({ message: `Quantity cannot exceed available stock of ${stock_quantity}.` });
         }
 
-        const cartId = await getOrCreateCart(userId);
-        await pool.query('UPDATE cart_items SET quantity = $1 WHERE cart_id = $2 AND product_id = $3', [quantity, cartId, productId]);
+        const cartId = await getOrCreateCart(userId, pool);
+        await pool.execute('UPDATE cart_items SET quantity = ? WHERE cart_id = ? AND product_id = ?', [quantity, cartId, productId]);
         res.status(200).json({ message: 'Cart updated.' });
     } catch (error) {
         console.error('Error updating cart item:', error);
@@ -138,9 +157,9 @@ router.delete('/items/:productId', authenticateToken, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const cartId = await getOrCreateCart(userId);
-        await pool.query(
-            'DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2',
+        const cartId = await getOrCreateCart(userId, pool);
+        await pool.execute(
+            'DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?',
             [cartId, productId]
         );
         res.status(200).json({ message: 'Item removed from cart.' });

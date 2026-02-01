@@ -219,7 +219,7 @@
                         <div class="card mb-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
-                                    <img :src="item.main_image_url"
+                                    <img :src="optimizeImage(item.main_image_url, 150)"
                                         style="width: 100px; height: 100px; object-fit: cover; border-radius: 10px;"
                                         class="me-3">
                                     <div class="flex-grow-1">

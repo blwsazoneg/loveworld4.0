@@ -150,7 +150,7 @@
         </div>
     </nav>
 
-  <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
+    <div class="modal fade" id="signInUpModal" tabindex="-1" aria-labelledby="signInUpModalLabel" aria-hidden="true"
         x-data="authModal">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -211,10 +211,10 @@
         <div class="row" x-show="!loading && product.id" x-transition>
             <!-- Column 1: Image Gallery -->
             <div class="col-lg-6 product-gallery">
-                <img :src="activeImageUrl" class="main-image mb-3" alt="Main product image">
+                <img :src="optimizeImage(activeImageUrl, 800)" class="main-image mb-3" alt="Main product image">
                 <div class="product-thumbnails">
                     <template x-for="image in product.images" :key="image.id">
-                        <img :src="image.image_url" class="thumbnail-item"
+                        <img :src="optimizeImage(image.image_url, 150)" class="thumbnail-item"
                             :class="{ 'active': image.image_url === activeImageUrl }"
                             @click="activeImageUrl = image.image_url">
                     </template>
@@ -296,12 +296,12 @@
             <h3>Related Products</h3>
             <div class="row row-cols-2 row-cols-lg-4 g-4">
                 <template x-for="related in product.related_products" :key="related.id">
-                    <div class="col me-2 rounded" style="border: 1px solid #000;">
-                        <a :href="`/product-detail.html?id=${related.id}`" style="text-decoration: none;"
-                            class="grid-product-card">
-                            <img :src="related.main_image_url || '/images/placeholder.png'" alt="Related Product"
-                                class="img-fluid">
-                            <div class="card-body text-center text-dark">
+                    <div class="col">
+                        <a :href="`/product-detail.html?id=${related.id}`" class="related-product-card">
+                            <div class="image-wrapper">
+                                <img :src="optimizeImage(related.main_image_url, 300)" alt="Related Product">
+                            </div>
+                            <div class="card-body">
                                 <h5 class="product-name" x-text="related.name"></h5>
                                 <p class="product-price" x-text="formatPrice(related.price)"></p>
                             </div>

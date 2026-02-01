@@ -13,6 +13,31 @@ function formatPrice(price) {
     }).format(price);
 };
 
+// --- NEW HELPER: Cloudinary Image Optimization (WebP/Auto) ---
+// --- NEW HELPER: Cloudinary Image Optimization (WebP/Auto + Resizing) ---
+function optimizeImage(url, width = null) {
+    if (!url || typeof url !== 'string') return '/images/placeholder.png';
+    if (url.includes('cloudinary.com') && url.includes('/upload/')) {
+        // Construct parameters: auto format, auto quality
+        let params = 'f_auto,q_auto';
+
+        // Add width resizing if requested (c_limit prevents upscaling)
+        if (width) {
+            params += `,w_${width},c_limit`;
+        }
+
+        // Avoid double-injecting if already present
+        if (!url.includes(`/${params}/`)) {
+            // Replace the simple /upload/ with our new params
+            // Note: This regex replacement handles cases where other params might not exist yet
+            return url.replace('/upload/', `/upload/${params}/`);
+        }
+    }
+    return url;
+}
+// Make it globally available for Alpine templates
+window.optimizeImage = optimizeImage;
+
 // ================================================================
 // NEW! GLOBAL AXIOS ERROR INTERCEPTOR
 // This code runs on EVERY API response.
@@ -103,6 +128,27 @@ document.addEventListener('alpine:init', () => {
             if (token && user) {
                 this.token = token;
                 this.user = JSON.parse(user);
+
+                // DATA FIX: Ensure array fields are actually arrays (handles legacy localStorage data)
+                if (typeof this.user.areas_of_interest === 'string') {
+                    try {
+                        this.user.areas_of_interest = this.user.areas_of_interest.startsWith('[')
+                            ? JSON.parse(this.user.areas_of_interest)
+                            : this.user.areas_of_interest.split(',');
+                    } catch (e) {
+                        this.user.areas_of_interest = [];
+                    }
+                }
+                if (typeof this.user.significant_achievements === 'string') {
+                    try {
+                        this.user.significant_achievements = this.user.significant_achievements.startsWith('[')
+                            ? JSON.parse(this.user.significant_achievements)
+                            : this.user.significant_achievements.split(',');
+                    } catch (e) {
+                        this.user.significant_achievements = []; // or keep as string if it's just text
+                    }
+                }
+
                 this.loggedIn = true;
                 // console.log('User initialized from localStorage:', this.user);
             }
@@ -372,6 +418,12 @@ document.addEventListener('alpine:init', () => {
         startEditing() {
             // Clone the current user data into the form data to avoid changing the display while typing
             this.formData = JSON.parse(JSON.stringify(this.user));
+
+            // Fix: Ensure boolean fields are strictly boolean for the Select inputs to work
+            // If they are null/undefined, default to false (No)
+            this.formData.ministry_staff = !!this.formData.ministry_staff;
+            this.formData.has_work_experience = !!this.formData.has_work_experience;
+
             // Ensure areas_of_interest is an array
             if (!this.formData.areas_of_interest) {
                 this.formData.areas_of_interest = [];
@@ -1165,6 +1217,7 @@ document.addEventListener('alpine:init', () => {
         loading: true,
         showSearch: false,
         formatPrice: formatPrice,
+        optimizeImage: window.optimizeImage,
 
         async init() {
             this.loading = true;
@@ -1235,6 +1288,7 @@ document.addEventListener('alpine:init', () => {
         cartError: false,
         showSearch: false,
         formatPrice: formatPrice,
+        optimizeImage: window.optimizeImage,
 
         init() {
             const params = new URLSearchParams(window.location.search);
@@ -1364,6 +1418,7 @@ document.addEventListener('alpine:init', () => {
         debounce: null,
         showSearch: false,
         formatPrice: formatPrice,
+        optimizeImage: window.optimizeImage,
 
         subtotal() {
             // THE FIX: Use 'active_price', which now correctly exists on the item object
@@ -1427,6 +1482,7 @@ document.addEventListener('alpine:init', () => {
         error: '',
 
         formatPrice: formatPrice,
+        optimizeImage: window.optimizeImage,
 
         init() {
             const params = new URLSearchParams(window.location.search);
@@ -1497,6 +1553,7 @@ document.addEventListener('alpine:init', () => {
         loading: true,
         showSearch: false,
         formatPrice: formatPrice,
+        optimizeImage: window.optimizeImage,
 
         init() {
             const params = new URLSearchParams(window.location.search);

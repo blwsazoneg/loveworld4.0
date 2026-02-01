@@ -32,32 +32,40 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-        const userExists = await pool.query(
-            'SELECT id FROM users WHERE email = $1 OR username = $2',
+        const [userExists] = await pool.execute(
+            'SELECT id FROM users WHERE email = ? OR username = ?',
             [email, username]
         );
 
-        if (userExists.rows.length > 0) {
+        if (userExists.length > 0) {
             return res.status(409).json({ message: 'A user with this email or username already exists.' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        const newUser = await pool.query(
+        const [result] = await pool.execute(
             `INSERT INTO users (
                 first_name, last_name, date_of_birth, email, phone_number,
                 username, password_hash, kingschat_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id, username, email, role, first_name, last_name`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 firstName, lastName, dateOfBirth || null, email, phoneNumber || null,
                 username, passwordHash, kingschat_id || null
             ]
         );
 
+        const newUserId = result.insertId;
+
+        // Fetch the newly created user to return (simulating RETURNING)
+        const [newUserRows] = await pool.execute(
+            'SELECT id, username, email, role, first_name, last_name FROM users WHERE id = ?',
+            [newUserId]
+        );
+        const newUser = newUserRows[0];
+
         const token = jwt.sign(
-            { id: newUser.rows[0].id, role: newUser.rows[0].role },
+            { id: newUser.id, role: newUser.role },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
@@ -65,7 +73,7 @@ router.post('/register', async (req, res) => {
         res.status(201).json({
             message: 'User registered successfully!',
             token,
-            user: newUser.rows[0]
+            user: newUser
         });
 
     } catch (error) {
@@ -78,14 +86,14 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        const userResult = await pool.query(
+        const [userResult] = await pool.execute(
             `SELECT u.*, sp.id as sbo_profile_id 
              FROM users u
              LEFT JOIN sbo_profiles sp ON u.id = sp.user_id
-             WHERE u.email = $1 OR u.username = $1`,
-            [identifier]
+             WHERE u.email = ? OR u.username = ?`,
+            [identifier, identifier]
         );
-        const user = userResult.rows[0];
+        const user = userResult[0];
         if (!user) return res.status(400).json({ message: 'Invalid credentials.' });
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials.' });
@@ -103,12 +111,20 @@ router.post('/login', async (req, res) => {
                 kingschatId: user.kingschat_id, kingschatGender: user.kingschat_gender,
                 kingschatAvatarUrl: user.kingschat_avatar_url, zone: user.zone, church: user.church,
                 ministryPosition: user.ministry_position, yearsInPosition: user.years_in_position,
-                group: user.group, leadership_role: user.leadership_role, ministry_staff: user.ministry_staff,
+                group: user.group, leadership_role: user.leadership_role,
+                ministry_staff: Boolean(user.ministry_staff),
                 ministry_department: user.ministry_department, educational_qualification: user.educational_qualification,
                 institution_of_completion: user.institution_of_completion, professional_qualification: user.professional_qualification,
-                has_work_experience: user.has_work_experience, organisation_of_employment: user.organisation_of_employment,
-                duration_of_employment: user.duration_of_employment, significant_achievements: user.significant_achievements,
-                areas_of_interest: user.areas_of_interest, apply_for: user.apply_for
+                has_work_experience: Boolean(user.has_work_experience),
+                organisation_of_employment: user.organisation_of_employment,
+                duration_of_employment: user.duration_of_employment,
+                significant_achievements: typeof user.significant_achievements === 'string' && user.significant_achievements.startsWith('[')
+                    ? JSON.parse(user.significant_achievements)
+                    : (user.significant_achievements ? user.significant_achievements.split(',') : []),
+                areas_of_interest: typeof user.areas_of_interest === 'string' && user.areas_of_interest.startsWith('[')
+                    ? JSON.parse(user.areas_of_interest)
+                    : (user.areas_of_interest ? user.areas_of_interest.split(',') : []),
+                apply_for: user.apply_for
             }
         });
     } catch (error) {
@@ -129,7 +145,7 @@ router.get('/', authenticateToken, checkRole(['Admin']), async (req, res) => {
     const searchTerm = req.query.search || '';
 
     try {
-        let countQuery = 'SELECT COUNT(*) FROM users';
+        let countQuery = 'SELECT COUNT(*) as count FROM users';
         let mainQuery = `
             SELECT id, first_name, last_name, username, email, role, created_at 
             FROM users
@@ -139,23 +155,39 @@ router.get('/', authenticateToken, checkRole(['Admin']), async (req, res) => {
         // Add search conditions if a search term exists
         if (searchTerm) {
             queryParams.push(`%${searchTerm}%`);
-            mainQuery += ` WHERE username ILIKE $1 OR email ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1`;
-            countQuery += ` WHERE username ILIKE $1 OR email ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1`;
+            // Note: MySQL uses CONCAT for like '%term%', but prepared statement ? handles escaping, 
+            // so we pass %term% as the value.
+            const whereClause = ` WHERE username LIKE ? OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?`;
+            mainQuery += whereClause;
+            countQuery += whereClause;
+            // We need to push the param 4 times for the 4 placeholders? 
+            // Actually, for cleaner code, let's just handle the params array construction carefully.
+        }
+
+        // Re-construct params for correct count/main queries
+        let countParams = [];
+        if (searchTerm) {
+            countParams = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`];
         }
 
         // Get total count for pagination
-        const totalResult = await pool.query(countQuery, queryParams);
-        const totalUsers = parseInt(totalResult.rows[0].count);
+        const [totalResult] = await pool.execute(countQuery, countParams);
+        const totalUsers = parseInt(totalResult[0].count);
         const totalPages = Math.ceil(totalUsers / limit);
 
         // Get paginated users
-        queryParams.push(limit);
-        queryParams.push(offset);
-        mainQuery += ` ORDER BY created_at DESC LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
-        const usersResult = await pool.query(mainQuery, queryParams);
+        let mainParams = [...countParams];
+        mainParams.push(limit);
+        mainParams.push(offset);
+
+        mainQuery += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+
+        // Note: LIMIT/OFFSET in MySQL prepared statements sometimes require integers, causing issues if passed as strings.
+        // Ensuring they are numbers.
+        const [usersResult] = await pool.query(mainQuery, mainParams);
 
         res.status(200).json({
-            users: usersResult.rows,
+            users: usersResult,
             currentPage: page,
             totalPages: totalPages
         });
@@ -172,7 +204,14 @@ router.get('/', authenticateToken, checkRole(['Admin']), async (req, res) => {
 router.put('/profile', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const {
-        // We'll accept all the new detailed fields
+        firstName,
+        lastName,
+        phoneNumber,
+        zone,
+        church,
+        ministryPosition,
+        yearsInPosition,
+        // Detailed fields
         group,
         leadership_role,
         ministry_staff,
@@ -188,31 +227,47 @@ router.put('/profile', authenticateToken, async (req, res) => {
         apply_for
     } = req.body;
 
+    // Convert arrays to JSON strings for storage
+    const significantAchievementsStr = Array.isArray(significant_achievements) ? JSON.stringify(significant_achievements) : significant_achievements;
+    const areasOfInterestStr = Array.isArray(areas_of_interest) ? JSON.stringify(areas_of_interest) : areas_of_interest;
+
+    // Fix: MySQL TINYINT stores boolean as 1/0. 
+    // If we receive string "true" (which can happen), MySQL casts it to 0!
+    // We must strictly convert to 1 or 0.
+    const ministryStaffVal = (String(ministry_staff) === 'true' || ministry_staff === 1) ? 1 : 0;
+    const hasWorkExperienceVal = (String(has_work_experience) === 'true' || has_work_experience === 1) ? 1 : 0;
+
     try {
-        const updatedUser = await pool.query(
+        await pool.execute(
             `UPDATE users SET
-                "group" = $1, leadership_role = $2, ministry_staff = $3, ministry_department = $4,
-                educational_qualification = $5, institution_of_completion = $6, professional_qualification = $7,
-                has_work_experience = $8, organisation_of_employment = $9, duration_of_employment = $10,
-                significant_achievements = $11, areas_of_interest = $12, apply_for = $13,
+                first_name = ?, last_name = ?, phone_number = ?,
+                zone = ?, church = ?, ministry_position = ?, years_in_position = ?,
+                \`group\` = ?, leadership_role = ?, ministry_staff = ?, ministry_department = ?,
+                educational_qualification = ?, institution_of_completion = ?, professional_qualification = ?,
+                has_work_experience = ?, organisation_of_employment = ?, duration_of_employment = ?,
+                significant_achievements = ?, areas_of_interest = ?, apply_for = ?,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $14
-            RETURNING *`,
+            WHERE id = ?`,
             [
-                group, leadership_role, ministry_staff, ministry_department,
-                educational_qualification, institution_of_completion, professional_qualification,
-                has_work_experience, organisation_of_employment, duration_of_employment,
-                significant_achievements, areas_of_interest, apply_for,
+                firstName, lastName, phoneNumber,
+                zone, church, ministryPosition, yearsInPosition,
+                group ?? null, leadership_role ?? null, ministryStaffVal, ministry_department ?? null,
+                educational_qualification ?? null, institution_of_completion ?? null, professional_qualification ?? null,
+                hasWorkExperienceVal, organisation_of_employment ?? null, duration_of_employment ?? null,
+                significantAchievementsStr ?? null, areasOfInterestStr ?? null, apply_for ?? null,
                 userId
             ]
         );
 
-        if (updatedUser.rows.length === 0) {
+        // Retrieve updated user
+        const [updatedUser] = await pool.execute('SELECT * FROM users WHERE id = ?', [userId]);
+
+        if (updatedUser.length === 0) {
             return res.status(404).json({ message: 'User not found.' });
         }
 
         // Return the full, updated user object
-        const user = updatedUser.rows[0];
+        const user = updatedUser[0];
         res.status(200).json({
             message: 'Your profile has been updated successfully!',
             user: {
@@ -223,12 +278,21 @@ router.put('/profile', authenticateToken, async (req, res) => {
                 kingschatAvatarUrl: user.kingschat_avatar_url, zone: user.zone, church: user.church,
                 ministryPosition: user.ministry_position, yearsInPosition: user.years_in_position,
                 // Also include the newly updated fields in the response
-                group: user.group, leadership_role: user.leadership_role, ministry_staff: user.ministry_staff,
+                group: user.group, leadership_role: user.leadership_role,
+                ministry_staff: Boolean(user.ministry_staff),
                 ministry_department: user.ministry_department, educational_qualification: user.educational_qualification,
                 institution_of_completion: user.institution_of_completion, professional_qualification: user.professional_qualification,
-                has_work_experience: user.has_work_experience, organisation_of_employment: user.organisation_of_employment,
-                duration_of_employment: user.duration_of_employment, significant_achievements: user.significant_achievements,
-                areas_of_interest: user.areas_of_interest, apply_for: user.apply_for
+                has_work_experience: Boolean(user.has_work_experience),
+                organisation_of_employment: user.organisation_of_employment,
+                duration_of_employment: user.duration_of_employment,
+                // Fix: Parse these fields if they are strings (JSON or comma-separated)
+                significant_achievements: typeof user.significant_achievements === 'string' && user.significant_achievements.startsWith('[')
+                    ? JSON.parse(user.significant_achievements)
+                    : (user.significant_achievements ? user.significant_achievements.split(',') : []),
+                areas_of_interest: typeof user.areas_of_interest === 'string' && user.areas_of_interest.startsWith('[')
+                    ? JSON.parse(user.areas_of_interest)
+                    : (user.areas_of_interest ? user.areas_of_interest.split(',') : []),
+                apply_for: user.apply_for
             }
         });
 
@@ -247,9 +311,9 @@ router.put('/:id/role', authenticateToken, checkRole(['Admin', 'Superadmin']), a
     const { id: currentAdminId, role: currentAdminRole } = req.user;
 
     // Fetch the target user's current role
-    const targetUserResult = await pool.query('SELECT role FROM users WHERE id = $1', [targetUserId]);
-    if (targetUserResult.rows.length === 0) return res.status(404).json({ message: 'User not found.' });
-    const targetUserRole = targetUserResult.rows[0].role;
+    const [targetUserResult] = await pool.execute('SELECT role FROM users WHERE id = ?', [targetUserId]);
+    if (targetUserResult.length === 0) return res.status(404).json({ message: 'User not found.' });
+    const targetUserRole = targetUserResult[0].role;
 
     // --- NEW, ROBUST SECURITY RULES ---
     // 1. Nobody can change the role OF a Superadmin
@@ -269,18 +333,20 @@ router.put('/:id/role', authenticateToken, checkRole(['Admin', 'Superadmin']), a
     if (!newRole || !allowedRoles.includes(newRole)) return res.status(400).json({ message: 'Invalid role.' });
 
     try {
-        const updateUser = await pool.query(
-            'UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, username, role',
+        await pool.execute(
+            'UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
             [newRole, targetUserId]
         );
 
-        if (updateUser.rows.length === 0) {
+        const [updateUser] = await pool.execute('SELECT id, username, role FROM users WHERE id = ?', [targetUserId]);
+
+        if (updateUser.length === 0) {
             return res.status(404).json({ message: 'User not found.' });
         }
 
         res.status(200).json({
             message: `User role successfully updated to ${newRole}.`,
-            user: updateUser.rows[0]
+            user: updateUser[0]
         });
 
     } catch (error) {

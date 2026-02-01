@@ -28,14 +28,14 @@ export const getActivePricesForProducts = async (productIds) => {
                 ELSE NULL
             END as original_price
         FROM products
-        WHERE id = ANY($1::int[])
+        WHERE id IN (?)
     `;
 
-    const pricesResult = await pool.query(priceQuery, [productIds]);
+    const [rows] = await pool.query(priceQuery, [productIds]);
 
     // Convert the result array into a Map for easy lookup (e.g., prices.get(productId))
     const priceMap = new Map();
-    for (const row of pricesResult.rows) {
+    for (const row of rows) {
         priceMap.set(row.id, {
             active_price: parseFloat(row.active_price),
             original_price: row.original_price ? parseFloat(row.original_price) : null,

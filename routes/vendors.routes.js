@@ -41,34 +41,37 @@ router.post('/', authenticateToken, checkRole(['Admin']), async (req, res) => {
     const { company_name, address, city, country, postal_code, sector_name } = req.body;
     if (!company_name || !city || !country) return res.status(400).json({ message: 'Company Name, City, and Country are required.' });
 
-    const client = await pool.connect();
+    const connection = await pool.getConnection();
     try {
-        await client.query('BEGIN');
+        await connection.beginTransaction();
         let sectorId = null;
         if (sector_name) {
-            let sectorResult = await client.query('SELECT id FROM sectors WHERE name ILIKE $1', [sector_name]);
-            if (sectorResult.rows.length > 0) {
-                sectorId = sectorResult.rows[0].id;
+            const [sectorResult] = await connection.execute('SELECT id FROM sectors WHERE name LIKE ?', [sector_name]);
+            if (sectorResult.length > 0) {
+                sectorId = sectorResult[0].id;
             } else {
-                const newSectorResult = await client.query('INSERT INTO sectors (name) VALUES ($1) RETURNING id', [sector_name]);
-                sectorId = newSectorResult.rows[0].id;
+                const [newSectorResult] = await connection.execute('INSERT INTO sectors (name) VALUES (?)', [sector_name]);
+                sectorId = newSectorResult.insertId;
             }
         }
         const coords = await geocodeAddress(address, city, country);
         if (!coords) throw new Error('Could not find coordinates for this address.');
 
-        const newVendor = await client.query(
-            `INSERT INTO vendor_locations (company_name, address, city, country, postal_code, sector_id, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        const [newVendorResult] = await connection.execute(
+            `INSERT INTO vendor_locations (company_name, address, city, country, postal_code, sector_id, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [company_name, address, city, country, postal_code, sectorId, coords.lat, coords.lon]
         );
-        await client.query('COMMIT');
-        res.status(201).json(newVendor.rows[0]);
+
+        const [newVendor] = await connection.execute('SELECT * FROM vendor_locations WHERE id = ?', [newVendorResult.insertId]);
+
+        await connection.commit();
+        res.status(201).json(newVendor[0]);
     } catch (error) {
-        await client.query('ROLLBACK');
+        await connection.rollback();
         console.error('Error creating vendor:', error);
         res.status(500).json({ message: error.message || 'Server error.' });
     } finally {
-        client.release();
+        connection.release();
     }
 });
 
@@ -77,10 +80,10 @@ router.post('/', authenticateToken, checkRole(['Admin']), async (req, res) => {
 // @access  Public
 router.get('/', async (req, res) => {
     try {
-        const vendors = await pool.query(
+        const [vendors] = await pool.execute(
             `SELECT vl.*, s.name as sector_name FROM vendor_locations vl LEFT JOIN sectors s ON vl.sector_id = s.id ORDER BY vl.created_at DESC`
         );
-        res.status(200).json(vendors.rows);
+        res.status(200).json(vendors);
     } catch (error) {
         console.error("Error fetching all vendors:", error);
         res.status(500).json({ message: 'Server error.' });
@@ -96,17 +99,20 @@ router.put('/:id', authenticateToken, checkRole(['Admin']), async (req, res) => 
     // (Note: This is a simplified update. A full update would also handle sector creation like the POST route)
     // For now, we assume the sector exists.
     try {
-        const sectorResult = await pool.query('SELECT id FROM sectors WHERE name ILIKE $1', [sector_name]);
-        const sectorId = sectorResult.rows.length > 0 ? sectorResult.rows[0].id : null;
+        const [sectorResult] = await pool.execute('SELECT id FROM sectors WHERE name LIKE ?', [sector_name]);
+        const sectorId = sectorResult.length > 0 ? sectorResult[0].id : null;
 
         const coords = await geocodeAddress(address, city, country);
         if (!coords) return res.status(400).json({ message: 'Could not find coordinates for the updated address.' });
 
-        const updatedVendor = await pool.query(
-            `UPDATE vendor_locations SET company_name=$1, address=$2, city=$3, country=$4, postal_code=$5, sector_id=$6, latitude=$7, longitude=$8 WHERE id=$9 RETURNING *`,
+        await pool.execute(
+            `UPDATE vendor_locations SET company_name=?, address=?, city=?, country=?, postal_code=?, sector_id=?, latitude=?, longitude=? WHERE id=?`,
             [company_name, address, city, country, postal_code, sectorId, coords.lat, coords.lon, id]
         );
-        res.status(200).json(updatedVendor.rows[0]);
+
+        const [updatedVendor] = await pool.execute('SELECT * FROM vendor_locations WHERE id = ?', [id]);
+
+        res.status(200).json(updatedVendor[0]);
     } catch (error) {
         console.error('Error updating vendor:', error);
         res.status(500).json({ message: 'Server error.' });
@@ -118,7 +124,7 @@ router.put('/:id', authenticateToken, checkRole(['Admin']), async (req, res) => 
 // @access  Private (Admin)
 router.delete('/:id', authenticateToken, checkRole(['Admin']), async (req, res) => {
     try {
-        await pool.query('DELETE FROM vendor_locations WHERE id = $1', [req.params.id]);
+        await pool.execute('DELETE FROM vendor_locations WHERE id = ?', [req.params.id]);
         res.status(200).json({ message: 'Vendor location deleted successfully.' });
     } catch (error) {
         console.error('Error deleting vendor:', error);

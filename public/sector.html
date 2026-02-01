@@ -260,7 +260,7 @@
     </div>
 
     <section class="sector-hero"
-        :style="`background-image: url(${sector.hero_image_url || '/images/hero-placeholder.jpg'})`">
+        :style="`background-image: url(${optimizeImage(sector.hero_image_url || '/images/hero-placeholder.jpg', 1200)})`">
         <div class="hero-content">
             <h1 class="hero-title" x-text="sector.name"></h1>
         </div>
@@ -295,7 +295,7 @@
                             <div class="vertical-product-grid">
                                 <template x-for="product in bestsellers" :key="product.id">
                                     <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                        <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                        <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                                     </a>
                                 </template>
                             </div>
@@ -309,7 +309,7 @@
                             <div class="vertical-product-grid">
                                 <template x-for="product in newArrivals" :key="product.id">
                                     <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                        <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                        <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                                     </a>
                                 </template>
                             </div>
@@ -329,7 +329,7 @@
                             <div class="horizontal-scroll-container" x-ref="orderNowCarousel">
                                 <template x-for="product in otherProducts" :key="product.id">
                                     <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                        <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                        <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                                     </a>
                                 </template>
                             </div>
@@ -352,7 +352,7 @@
                             <div class="vertical-product-grid">
                                 <template x-for="product in familyFeasts" :key="product.id">
                                     <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                        <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                        <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                                     </a>
                                 </template>
                             </div>
@@ -366,7 +366,7 @@
                             <div class="vertical-product-grid">
                                 <template x-for="product in fruitsAndVeg" :key="product.id">
                                     <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                        <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                        <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                                     </a>
                                 </template>
                             </div>
@@ -386,7 +386,7 @@
                             <div class="horizontal-scroll-container" x-ref="orderNowCarousel">
                                 <template x-for="product in otherProducts" :key="product.id">
                                     <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                        <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                        <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                                     </a>
                                 </template>
                             </div>

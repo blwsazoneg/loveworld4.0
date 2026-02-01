@@ -18,16 +18,17 @@ router.post('/inquire', authenticateToken, async (req, res) => {
     }
 
     try {
-        const newInquiry = await pool.query(
+        const [result] = await pool.execute(
             `INSERT INTO business_inquiries (business_reg_number, registered_business_name, operating_location, user_id)
-             VALUES ($1, $2, $3, $4)
-             RETURNING *`,
+             VALUES (?, ?, ?, ?)`,
             [regNumber, name, location, userId]
         );
 
+        const [newInquiry] = await pool.execute('SELECT * FROM business_inquiries WHERE id = ?', [result.insertId]);
+
         res.status(201).json({
             message: 'Thank you! Your inquiry has been submitted successfully.',
-            inquiry: newInquiry.rows[0]
+            inquiry: newInquiry[0]
         });
 
     } catch (error) {

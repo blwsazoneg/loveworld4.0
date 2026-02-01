@@ -43,15 +43,21 @@ router.post(
         const filePaths = req.files ? req.files.map(file => file.path) : [];
 
         try {
-            const newInnovation = await pool.query(
+            // MySQL: store file_paths as JSON string
+            const filePathsJson = JSON.stringify(filePaths);
+
+            const [result] = await pool.execute(
                 `INSERT INTO innovations (description, file_paths, submitted_by_user_id)
-                 VALUES ($1, $2, $3) RETURNING *`,
-                [description, filePaths, userId]
+                 VALUES (?, ?, ?)`,
+                [description, filePathsJson, userId]
             );
+
+            // Fetch the inserted record using insertId
+            const [newInnovation] = await pool.execute('SELECT * FROM innovations WHERE id = ?', [result.insertId]);
 
             res.status(201).json({
                 message: 'Your innovation has been submitted successfully!',
-                submission: newInnovation.rows[0]
+                submission: newInnovation[0]
             });
 
         } catch (error) {

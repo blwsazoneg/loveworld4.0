@@ -9,15 +9,17 @@ const router = express.Router();
 
 // GET all sectors
 router.get('/sectors', async (req, res) => {
-    const sectors = await pool.query('SELECT * FROM sectors ORDER BY name');
-    res.status(200).json(sectors.rows);
+    try {
+        const [sectors] = await pool.execute('SELECT * FROM sectors ORDER BY name');
+        res.status(200).json(sectors);
+    } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 
 // Get all brands
 router.get('/brands', async (req, res) => {
     try {
-        const brands = await pool.query('SELECT * FROM brands ORDER BY name');
-        res.status(200).json(brands.rows);
+        const [brands] = await pool.execute('SELECT * FROM brands ORDER BY name');
+        res.status(200).json(brands);
     } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 
@@ -26,29 +28,29 @@ router.get('/sector/:sectorName', async (req, res) => {
     const { sectorName } = req.params;
     try {
         // Step 1: Find the sector itself to get its details (like the image_url)
-        const sectorResult = await pool.query(
-            'SELECT * FROM sectors WHERE name = $1',
+        const [sectorResult] = await pool.execute(
+            'SELECT * FROM sectors WHERE name = ?',
             [sectorName]
         );
 
-        if (sectorResult.rows.length === 0) {
+        if (sectorResult.length === 0) {
             return res.status(404).json({ message: 'Sector not found.' });
         }
-        const sector = sectorResult.rows[0];
+        const sector = sectorResult[0];
 
         // Step 2: Find all products belonging to this sector
-        const productsResult = await pool.query(
+        const [productsResult] = await pool.execute(
             `SELECT p.id, p.name, p.price, 
             (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as main_image_url
              FROM products p
-             WHERE p.sector_id = $1 AND p.is_active = true`,
+             WHERE p.sector_id = ? AND p.is_active = true`,
             [sector.id]
         );
 
         // Step 3: Combine the sector info and the products into a single response
         res.status(200).json({
             sector: sector,
-            products: productsResult.rows
+            products: productsResult
         });
 
     } catch (error) {
@@ -63,7 +65,7 @@ router.get('/sector/:sectorName', async (req, res) => {
 router.get('/sector/:sectorId/bestsellers', async (req, res) => {
     const { sectorId } = req.params;
     try {
-        const bestsellersResult = await pool.query(
+        const [bestsellersResult] = await pool.execute(
             `SELECT
                 p.id, p.name, p.price,
                 SUM(oi.quantity) as total_sold,
@@ -71,13 +73,13 @@ router.get('/sector/:sectorId/bestsellers', async (req, res) => {
              FROM order_items oi
              JOIN products p ON oi.product_id = p.id
              JOIN orders o ON oi.order_id = o.id
-             WHERE p.sector_id = $1 AND o.created_at >= NOW() - interval '30 days' AND p.is_active = true
-             GROUP BY p.id
+             WHERE p.sector_id = ? AND o.created_at >= NOW() - INTERVAL 30 DAY AND p.is_active = true
+             GROUP BY p.id, p.name, p.price
              ORDER BY total_sold DESC
              LIMIT 10`,
             [sectorId]
         );
-        res.status(200).json(bestsellersResult.rows);
+        res.status(200).json(bestsellersResult);
     } catch (error) {
         console.error('Error fetching sector bestsellers:', error);
         res.status(500).json({ message: 'Server error' });
@@ -90,17 +92,17 @@ router.get('/sector/:sectorId/bestsellers', async (req, res) => {
 router.get('/sector/:sectorId/new-arrivals', async (req, res) => {
     const { sectorId } = req.params;
     try {
-        const newArrivalsResult = await pool.query(
+        const [newArrivalsResult] = await pool.execute(
             `SELECT
                 p.id, p.name, p.price,
                 (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as main_image_url
              FROM products p
-             WHERE p.sector_id = $1 AND p.is_active = true
+             WHERE p.sector_id = ? AND p.is_active = true
              ORDER BY p.created_at DESC
              LIMIT 10`,
             [sectorId]
         );
-        res.status(200).json(newArrivalsResult.rows);
+        res.status(200).json(newArrivalsResult);
     } catch (error) {
         console.error('Error fetching sector new arrivals:', error);
         res.status(500).json({ message: 'Server error' });
@@ -114,14 +116,14 @@ router.get('/sector/:sectorId/family-feasts', async (req, res) => {
     const { sectorId } = req.params;
     try {
         // In production, you might search for a specific tag. For now, we'll search by name.
-        const results = await pool.query(
+        const [results] = await pool.execute(
             `SELECT p.id, p.name, p.price, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
              FROM products p
-             WHERE p.sector_id = $1 AND p.is_active = true AND (p.name ILIKE '%feast%' OR p.name ILIKE '%family%')
+             WHERE p.sector_id = ? AND p.is_active = true AND (p.name LIKE ? OR p.name LIKE ?)
              ORDER BY p.created_at DESC LIMIT 10`,
-            [sectorId]
+            [sectorId, '%feast%', '%family%']
         );
-        res.status(200).json(results.rows);
+        res.status(200).json(results);
     } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 
@@ -131,14 +133,14 @@ router.get('/sector/:sectorId/family-feasts', async (req, res) => {
 router.get('/sector/:sectorId/fruits-vegetables', async (req, res) => {
     const { sectorId } = req.params;
     try {
-        const results = await pool.query(
+        const [results] = await pool.execute(
             `SELECT p.id, p.name, p.price, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
              FROM products p
-             WHERE p.sector_id = $1 AND p.is_active = true AND (p.name ILIKE '%fruit%' OR p.name ILIKE '%vegetable%')
+             WHERE p.sector_id = ? AND p.is_active = true AND (p.name LIKE ? OR p.name LIKE ?)
              ORDER BY p.created_at DESC LIMIT 10`,
-            [sectorId]
+            [sectorId, '%fruit%', '%vegetable%']
         );
-        res.status(200).json(results.rows);
+        res.status(200).json(results);
     } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 
@@ -156,20 +158,19 @@ router.post('/sectors', authenticateToken, checkRole(['Admin']), async (req, res
 
     try {
         // 2. Check for Duplicates (case-insensitive)
-        const existingSector = await pool.query(
-            'SELECT id FROM sectors WHERE name ILIKE $1',
+        const [existingSector] = await pool.execute(
+            'SELECT id FROM sectors WHERE name LIKE ?',
             [name]
         );
 
-        if (existingSector.rows.length > 0) {
+        if (existingSector.length > 0) {
             return res.status(409).json({ message: 'A sector with this name already exists.' });
         }
 
         // 3. Insert the new sector into the database
-        const newSector = await pool.query(
+        const [result] = await pool.execute(
             `INSERT INTO sectors (name, image_url, hero_image_url, is_featured, display_order)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING *`,
+             VALUES (?, ?, ?, ?, ?)`,
             [
                 name,
                 image_url || null,
@@ -179,10 +180,13 @@ router.post('/sectors', authenticateToken, checkRole(['Admin']), async (req, res
             ]
         );
 
+        // Fetch the newly created sector
+        const [newSector] = await pool.execute('SELECT * FROM sectors WHERE id = ?', [result.insertId]);
+
         // 4. Send a success response with the newly created sector object
         res.status(201).json({
             message: 'Sector created successfully.',
-            sector: newSector.rows[0]
+            sector: newSector[0]
         });
 
     } catch (error) {
@@ -215,7 +219,7 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const searchResult = await pool.query(
+        const [searchResult] = await pool.execute(
             `SELECT 
                 p.id, p.name, p.price,
                 b.name as brand_name, 
@@ -226,16 +230,16 @@ router.get('/', async (req, res) => {
              LEFT JOIN sectors s ON p.sector_id = s.id
              WHERE 
                 p.is_active = true AND (
-                    p.name ILIKE $1 OR
-                    p.description ILIKE $1 OR
-                    b.name ILIKE $1 OR
-                    s.name ILIKE $1
+                    p.name LIKE ? OR
+                    p.description LIKE ? OR
+                    b.name LIKE ? OR
+                    s.name LIKE ?
                 )
              LIMIT 50`, // Limit results to prevent overwhelming the server
-            [`%${searchTerm}%`]
+            [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         );
 
-        res.status(200).json(searchResult.rows);
+        res.status(200).json(searchResult);
     } catch (error) {
         console.error('Error during product search:', error);
         res.status(500).json({ message: 'Server error during search.' });
@@ -257,23 +261,23 @@ router.put('/:id', authenticateToken, checkRole(['Admin', 'SBO']), async (req, r
         return res.status(400).json({ message: 'Name, description, and price are required.' });
     }
 
-    const client = await pool.connect();
+    const connection = await pool.getConnection();
     try {
-        await client.query('BEGIN');
+        await connection.beginTransaction();
 
-        const productResult = await client.query('SELECT sbo_id FROM products WHERE id = $1', [productId]);
-        if (productResult.rows.length === 0) {
+        const [productResult] = await connection.execute('SELECT sbo_id FROM products WHERE id = ?', [productId]);
+        if (productResult.length === 0) {
             return res.status(404).json({ message: 'Product not found.' });
         }
-        if (userRole !== 'Admin' && productResult.rows[0].sbo_id !== userId) {
+        if (userRole !== 'Admin' && productResult[0].sbo_id !== userId) {
             return res.status(403).json({ message: 'You are not authorized to update this product.' });
         }
 
-        const updatedProduct = await client.query(
+        await connection.execute(
             `UPDATE products SET 
-                name = $1, description = $2, price = $3, stock_quantity = $4, sector_id = $5, brand_id = $6, is_active = $7,
-                allow_backorder = $8, sale_price = $9, sale_start_date = $10, sale_end_date = $11, updated_at = CURRENT_TIMESTAMP
-             WHERE id = $12 RETURNING *`,
+                name = ?, description = ?, price = ?, stock_quantity = ?, sector_id = ?, brand_id = ?, is_active = ?,
+                allow_backorder = ?, sale_price = ?, sale_start_date = ?, sale_end_date = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
             [
                 name, description, price, stock_quantity, sector_id, brand_id, is_active,
                 allow_backorder, sale_price, sale_start_date, sale_end_date,
@@ -281,15 +285,17 @@ router.put('/:id', authenticateToken, checkRole(['Admin', 'SBO']), async (req, r
             ]
         );
 
-        await client.query('COMMIT');
-        res.status(200).json({ message: 'Product updated successfully.', product: updatedProduct.rows[0] });
+        const [updatedProduct] = await connection.execute('SELECT * FROM products WHERE id = ?', [productId]);
+
+        await connection.commit();
+        res.status(200).json({ message: 'Product updated successfully.', product: updatedProduct[0] });
 
     } catch (error) {
-        await client.query('ROLLBACK');
+        await connection.rollback();
         console.error('Error updating product:', error);
         res.status(500).json({ message: 'Server error while updating product.' });
     } finally {
-        client.release();
+        connection.release();
     }
 });
 
@@ -302,15 +308,15 @@ router.delete('/:id', authenticateToken, checkRole(['Admin', 'SBO']), async (req
     const { id: userId, role: userRole } = req.user;
 
     try {
-        const productResult = await pool.query('SELECT sbo_id FROM products WHERE id = $1', [productId]);
-        if (productResult.rows.length === 0) {
+        const [productResult] = await pool.execute('SELECT sbo_id FROM products WHERE id = ?', [productId]);
+        if (productResult.length === 0) {
             return res.status(404).json({ message: 'Product not found.' });
         }
-        if (userRole !== 'Admin' && productResult.rows[0].sbo_id !== userId) {
+        if (userRole !== 'Admin' && productResult[0].sbo_id !== userId) {
             return res.status(403).json({ message: 'You are not authorized to delete this product.' });
         }
 
-        await pool.query('DELETE FROM products WHERE id = $1', [productId]);
+        await pool.execute('DELETE FROM products WHERE id = ?', [productId]);
         res.status(200).json({ message: 'Product deleted successfully.' });
 
     } catch (error) {
@@ -335,13 +341,12 @@ router.delete('/:id', authenticateToken, checkRole(['Admin', 'SBO']), async (req
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const productResult = await pool.query(
+        const [productResult] = await pool.execute(
             `SELECT 
                 p.*, 
                 b.name as brand_name, s.name as sector_name,
                 sbop.company_name as sbo_company_name, sbop.contact_phone as sbo_contact_phone,
                 sbop.contact_email as sbo_contact_email,
-                -- THE FIX: Use a CASE statement to determine the active price
                 CASE
                     WHEN p.sale_price IS NOT NULL AND (p.sale_start_date IS NULL OR p.sale_start_date <= NOW()) AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW())
                     THEN p.sale_price
@@ -356,28 +361,28 @@ router.get('/:id', async (req, res) => {
              LEFT JOIN brands b ON p.brand_id = b.id
              LEFT JOIN sectors s ON p.sector_id = s.id
              LEFT JOIN sbo_profiles sbop ON p.sbo_profile_id = sbop.id
-             WHERE p.id = $1 AND p.is_active = true`,
+             WHERE p.id = ? AND p.is_active = true`,
             [id]
         );
 
-        if (productResult.rows.length === 0) return res.status(404).json({ message: 'Product not found.' });
-        const product = productResult.rows[0];
+        if (productResult.length === 0) return res.status(404).json({ message: 'Product not found.' });
+        const product = productResult[0];
 
         // 2. Fetch all images for this product
-        const imagesResult = await pool.query('SELECT * FROM product_images WHERE product_id = $1 ORDER BY display_order ASC', [id]);
-        product.images = imagesResult.rows;
+        const [imagesResult] = await pool.execute('SELECT * FROM product_images WHERE product_id = ? ORDER BY display_order ASC', [id]);
+        product.images = imagesResult;
 
         // 3. Fetch RELATED products (from the same sector, excluding the current product)
         if (product.sector_id) {
-            const relatedResult = await pool.query(
+            const [relatedResult] = await pool.execute(
                 `SELECT p.id, p.name, p.price, 
                 (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as main_image_url
                  FROM products p
-                 WHERE p.sector_id = $1 AND p.id != $2 AND p.is_active = true
+                 WHERE p.sector_id = ? AND p.id != ? AND p.is_active = true
                  LIMIT 4`,
                 [product.sector_id, id]
             );
-            product.related_products = relatedResult.rows;
+            product.related_products = relatedResult;
         } else {
             product.related_products = [];
         }
@@ -398,10 +403,10 @@ router.get('/:id', async (req, res) => {
 // @access  Public
 router.get('/list/new-releases', async (req, res) => {
     try {
-        const products = await pool.query(
+        const [products] = await pool.execute(
             `SELECT p.id, p.name, p.price, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url FROM products p WHERE p.is_active = true ORDER BY p.created_at DESC LIMIT 20`
         );
-        res.status(200).json(products.rows);
+        res.status(200).json(products);
     } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 
@@ -410,12 +415,12 @@ router.get('/list/new-releases', async (req, res) => {
 // @access  Public
 router.get('/list/best-sellers', async (req, res) => {
     try {
-        const products = await pool.query(
+        const [products] = await pool.execute(
             `SELECT p.id, p.name, p.price, SUM(oi.quantity) as total_sold, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
              FROM products p JOIN order_items oi ON p.id = oi.product_id
-             WHERE p.is_active = true GROUP BY p.id ORDER BY total_sold DESC LIMIT 20`
+             WHERE p.is_active = true GROUP BY p.id, p.name, p.price ORDER BY total_sold DESC LIMIT 20`
         );
-        res.status(200).json(products.rows);
+        res.status(200).json(products);
     } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 
@@ -424,7 +429,7 @@ router.get('/list/best-sellers', async (req, res) => {
 // @access  Public
 router.get('/list/specials', async (req, res) => {
     try {
-        const products = await pool.query(
+        const [products] = await pool.execute(
             `SELECT p.id, p.name, p.price, p.sale_price as active_price, (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as main_image_url
              FROM products p
              WHERE p.is_active = true AND p.sale_price IS NOT NULL
@@ -432,7 +437,7 @@ router.get('/list/specials', async (req, res) => {
              AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW())
              ORDER BY p.created_at DESC LIMIT 20`
         );
-        res.status(200).json(products.rows);
+        res.status(200).json(products);
     } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 

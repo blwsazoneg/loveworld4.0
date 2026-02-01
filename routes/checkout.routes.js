@@ -20,31 +20,31 @@ router.post('/create-session', authenticateToken, async (req, res) => {
 
     try {
         // 1. Get the user's cart items from our database
-        const cartResult = await pool.query('SELECT id FROM carts WHERE user_id = $1', [userId]);
-        if (cartResult.rows.length === 0) {
+        const [cartResult] = await pool.execute('SELECT id FROM carts WHERE user_id = ?', [userId]);
+        if (cartResult.length === 0) {
             return res.status(404).json({ message: 'No active cart found for this user.' });
         }
-        const cartId = cartResult.rows[0].id;
+        const cartId = cartResult[0].id;
 
-        const cartItemsResult = await pool.query(
+        const [cartItemsResult] = await pool.execute(
             `SELECT ci.product_id, p.name, p.description, p.price, ci.quantity 
              FROM cart_items ci
              JOIN products p ON ci.product_id = p.id
-             WHERE ci.cart_id = $1`,
+             WHERE ci.cart_id = ?`,
             [cartId]
         );
 
-        if (cartItemsResult.rows.length === 0) {
+        if (cartItemsResult.length === 0) {
             return res.status(400).json({
                 message: 'Your cart is empty.'
             });
         }
 
-        const cartItems = cartItemsResult.rows;
+        const cartItems = cartItemsResult;
 
         for (const item of cartItems) {
-            const stockResult = await pool.query('SELECT stock_quantity, allow_backorder FROM products WHERE id = $1', [item.product_id]);
-            const { stock_quantity, allow_backorder } = stockResult.rows[0];
+            const [stockResult] = await pool.execute('SELECT stock_quantity, allow_backorder FROM products WHERE id = ?', [item.product_id]);
+            const { stock_quantity, allow_backorder } = stockResult[0];
             if (item.quantity > stock_quantity && !allow_backorder) {
                 return res.status(400).json({ message: `Checkout failed: The quantity for "${item.name}" exceeds the ${stock_quantity} available in stock. Please update your cart.` });
             }
@@ -118,61 +118,64 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const { userId, cartId } = session.metadata;
 
         // Use a database transaction for this critical operation
-        const client = await pool.connect();
+        const connection = await pool.getConnection(); // UPDATE: getConnection
         try {
-            await client.query('BEGIN');
+            await connection.beginTransaction();
 
             // 1. Get all items from the user's cart
-            const cartItemsResult = await client.query(
+            const [cartItemsResult] = await connection.execute(
                 `SELECT ci.product_id, ci.quantity, p.price 
                  FROM cart_items ci JOIN products p ON ci.product_id = p.id
-                 WHERE ci.cart_id = $1`, [cartId]
+                 WHERE ci.cart_id = ?`, [cartId]
             );
-            const cartItems = cartItemsResult.rows;
+            const cartItems = cartItemsResult;
 
             if (cartItems.length > 0) {
                 // 2. Create a new Order and get its ID
-                const newOrderResult = await client.query(
+                // MySQL doesn't support RETURNING id in the same way, need to use insertId
+                const [newOrderResult] = await connection.execute(
                     `INSERT INTO orders (user_id, total_amount, status, stripe_session_id) 
-                     VALUES ($1, $2, 'paid', $3) RETURNING id`,
+                     VALUES (?, ?, 'paid', ?)`,
                     [userId, session.amount_total / 100, session.id]
                 );
-                const newOrderId = newOrderResult.rows[0].id;
+                const newOrderId = newOrderResult.insertId;
 
                 // 3. Loop through items, copy them to order_items, AND UPDATE STOCK
                 for (const item of cartItems) {
                     // 3a. Copy to order_items
-                    await client.query(
+                    await connection.execute(
                         `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) 
-                         VALUES ($1, $2, $3, $4)`,
+                         VALUES (?, ?, ?, ?)`,
                         [newOrderId, item.product_id, item.quantity, item.price]
                     );
 
                     // --- THIS IS THE CRITICAL FIX ---
                     // 3b. Decrement the stock_quantity in the products table
-                    await client.query(
+                    await connection.execute(
                         `UPDATE products 
-                         SET stock_quantity = stock_quantity - $1 
-                         WHERE id = $2`,
+                         SET stock_quantity = stock_quantity - ? 
+                         WHERE id = ?`,
                         [item.quantity, item.product_id]
                     );
                 }
 
                 // 4. Clear the user's cart
-                await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cartId]);
+                await connection.execute('DELETE FROM cart_items WHERE cart_id = ?', [cartId]);
 
-                await client.query('COMMIT'); // Commit all changes
+                await connection.commit(); // Commit all changes
                 console.log(`Order ${newOrderId} fulfilled, stock updated, and cart ${cartId} cleared.`);
             } else {
                 // If the cart was somehow empty, just commit what we have (nothing)
-                await client.query('COMMIT');
+                await connection.commit();
             }
         } catch (error) {
-            await client.query('ROLLBACK'); // If any step fails, undo everything
+            await connection.rollback(); // If any step fails, undo everything
             console.error('Error fulfilling order and updating stock:', error);
+            // Webhook should return 200 even if internal error to verify receipt, 
+            // but for debugging let's error. Actually standard is 200 if handled or 500 if retry needed.
             return res.status(500).json({ message: 'Error fulfilling order.' });
         } finally {
-            client.release(); // ALWAYS release the client
+            connection.release(); // ALWAYS release the client
         }
     }
 

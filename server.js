@@ -1,6 +1,8 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import helmet from 'helmet';
+import cors from 'cors';
 
 // Import all our routes
 import userRoutes from './routes/user.routes.js';
@@ -23,6 +25,14 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Security Middleware
+app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP to allow inline scripts/images (Stripe, Cloudinary, etc.)
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }, // Allow OAuth popups (KingsChat)
+}));
+app.use(cors());
+
+// Webhook Route (Must come before express.json() because it needs raw body)
 app.use('/api/checkout', checkoutRoutes);
 
 

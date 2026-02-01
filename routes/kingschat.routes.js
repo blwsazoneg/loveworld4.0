@@ -24,52 +24,52 @@ router.post('/login', async (req, res) => {
                 headers: { 'authorization': `Bearer ${accessToken}` }
             });
         const kcProfile = profileResponse.data.profile;
-        const userResult = await pool.query(
+        const [userResult] = await pool.execute(
             `SELECT u.*, sp.id as sbo_profile_id
              FROM users u
              LEFT JOIN sbo_profiles sp ON u.id = sp.user_id
-             WHERE u.kingschat_id = $1`,
+             WHERE u.kingschat_id = ?`,
             [kcProfile.id]
         );
 
-        if (userResult.rows.length > 0) {
-            const user = userResult.rows[0];
+        if (userResult.length > 0) {
+            const user = userResult[0];
 
             if (refreshToken) {
-                await pool.query(
+                await pool.execute(
                     `UPDATE users 
-                    SET kingschat_access_token = $1, 
-                    kingschat_refresh_token = $2, 
+                    SET kingschat_access_token = ?, 
+                    kingschat_refresh_token = ?, 
                     updated_at = CURRENT_TIMESTAMP 
-                    WHERE id = $3`,
+                    WHERE id = ?`,
                     [accessToken, refreshToken, user.id]
                 );
             } else {
-                await pool.query(
+                await pool.execute(
                     `UPDATE users 
-                    SET kingschat_access_token = $1, 
+                    SET kingschat_access_token = ?, 
                     updated_at = CURRENT_TIMESTAMP 
-                    WHERE id = $2`,
+                    WHERE id = ?`,
                     [accessToken, user.id]
                 );
             }
 
+            // Re-fetch the user data after the update to get the latest info
+            const [updatedUserResult] = await pool.execute('SELECT * FROM users WHERE id = ?', [user.id]);
+            const updatedUser = updatedUserResult[0];
+
             const appToken = jwt.sign(
-                { id: user.id, role: user.role },
+                { id: updatedUser.id, role: updatedUser.role },
                 process.env.JWT_SECRET,
                 { expiresIn: '10h' }
             );
-
-            // Re-fetch the user data after the update to get the latest info
-            const updatedUserResult = await pool.query('SELECT * FROM users WHERE id = $1', [user.id]);
-            const updatedUser = updatedUserResult.rows[0];
 
             // THE FIX IS HERE: We now build the COMPLETE user object
             res.status(200).json({
                 message: 'Logged in successfully via KingsChat.',
                 token: appToken,
                 user: {
-                    id: updatedUser.id, username: updatedUser.username, email: updatedUser.email, role: updatedUser.role, sbo_profile_id: updatedUser.sbo_profile_id,
+                    id: updatedUser.id, username: updatedUser.username, email: updatedUser.email, role: updatedUser.role, sbo_profile_id: user.sbo_profile_id, // keep sbo_profile_id from original join
                     firstName: updatedUser.first_name, lastName: updatedUser.last_name, dateOfBirth: updatedUser.date_of_birth,
                     phoneNumber: updatedUser.phone_number, kingschatHandle: updatedUser.kingschat_handle,
                     kingschatId: updatedUser.kingschat_id, kingschatGender: updatedUser.kingschat_gender,
@@ -119,28 +119,27 @@ router.post('/link', authenticateToken, async (req, res) => {
         // Step 2: Update our user record in the database
         const birthDate = kcProfile.birth_date_millis ? new Date(kcProfile.birth_date_millis).toISOString().split('T')[0] : null;
 
-        const existingLink = await pool.query('SELECT id FROM users WHERE kingschat_id = $1 AND id != $2', [kcProfile.id, ourUserId]);
-        if (existingLink.rows.length > 0) {
+        const [existingLink] = await pool.execute('SELECT id FROM users WHERE kingschat_id = ? AND id != ?', [kcProfile.id, ourUserId]);
+        if (existingLink.length > 0) {
             return res.status(409).json({ message: 'This KingsChat account is already linked to another user.' });
         }
 
         // We only have the access token from this flow. We can't get the refresh token.
         // We will save the access token we received.
-        const updatedUser = await pool.query(
+        await pool.execute(
             `UPDATE users SET
-                kingschat_id = $1,
-                kingschat_gender = $2,
-                kingschat_avatar_url = $3,
-                kingschat_access_token = $4, -- Save the token we got
-                kingschat_handle = COALESCE(kingschat_handle, $5),
-                first_name = COALESCE(NULLIF(first_name, ''), $6),
-                last_name = COALESCE(NULLIF(last_name, ''), $7),
-                email = COALESCE(NULLIF(email, ''), $8),
-                phone_number = COALESCE(NULLIF(phone_number, ''), $9),
-                date_of_birth = COALESCE(date_of_birth, $10),
+                kingschat_id = ?,
+                kingschat_gender = ?,
+                kingschat_avatar_url = ?,
+                kingschat_access_token = ?, -- Save the token we got
+                kingschat_handle = COALESCE(kingschat_handle, ?),
+                first_name = COALESCE(NULLIF(first_name, ''), ?),
+                last_name = COALESCE(NULLIF(last_name, ''), ?),
+                email = COALESCE(NULLIF(email, ''), ?),
+                phone_number = COALESCE(NULLIF(phone_number, ''), ?),
+                date_of_birth = COALESCE(date_of_birth, ?),
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $11
-            RETURNING *`,
+            WHERE id = ?`,
             [
                 kcProfile.id,
                 kcProfile.gender,
@@ -156,7 +155,8 @@ router.post('/link', authenticateToken, async (req, res) => {
             ]
         );
 
-        const user = updatedUser.rows[0];
+        const [updatedUser] = await pool.execute('SELECT * FROM users WHERE id = ?', [ourUserId]);
+        const user = updatedUser[0];
         const userToReturn = {
             id: user.id,
             username: user.username,

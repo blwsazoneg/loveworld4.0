@@ -210,7 +210,7 @@
                     <div class="carousel-item" :class="{ 'active': index === 0 }">
                         <!-- The main banner with dynamic background -->
                         <div class="hero-banner"
-                            :style="`background-image: url(${slide.background_image_url}); background-color: #002366;`">
+                            :style="`background-image: url(${optimizeImage(slide.background_image_url, 1200)}); background-color: #002366;`">
 
                             <!-- The text content -->
                             <div class="hero-content-wrapper">
@@ -230,7 +230,7 @@
                                     <!-- THE FIX IS HERE -->
                                     <div class="collage-img"
                                         :style="`top: ${img.top_position}; left: ${img.left_position}; width: ${img.width}; height: ${img.height}; z-index: ${img.z_index};`">
-                                        <img :src="img.image_url" alt="Collage Image">
+                                        <img :src="optimizeImage(img.image_url, 300)" alt="Collage Image">
                                     </div>
                                 </template>
                             </div>
@@ -271,7 +271,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in bestsellers" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -287,7 +287,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -303,7 +303,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -317,9 +317,10 @@
                 <h3 class="section-title">Featured Categories</h3>
             </div>
             <div class="horizontal-scroll-container" x-ref="carousel1">
-                <template x-for="sector in featuredSectors.slice(0, 5)" :key="sector.id">
+                <template x-for="sector in featuredSectors.slice(0, 4)" :key="sector.id">
                     <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
-                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <div class="image-wrapper"><img :src="optimizeImage(sector.image_url, 300)" :alt="sector.name">
+                        </div>
                         <p class="product-name fw-bold" x-text="sector.name"></p>
                     </a>
                 </template>
@@ -335,9 +336,10 @@
         <!-- Carousel 2 -->
         <section class="dark-carousel-section">
             <div class="horizontal-scroll-container" x-ref="carousel2">
-                <template x-for="sector in featuredSectors.slice(5, 10)" :key="sector.id">
+                <template x-for="sector in featuredSectors.slice(4, 8)" :key="sector.id">
                     <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
-                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <div class="image-wrapper"><img :src="optimizeImage(sector.image_url, 300)" :alt="sector.name">
+                        </div>
                         <p class="product-name fw-bold" x-text="sector.name"></p>
                     </a>
                 </template>
@@ -364,7 +366,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in bestsellers" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -380,7 +382,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -396,7 +398,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -407,9 +409,10 @@
         <!-- Carousel 3 -->
         <section class="dark-carousel-section">
             <div class="horizontal-scroll-container" x-ref="carousel3">
-                <template x-for="sector in featuredSectors.slice(10, 15)" :key="sector.id">
+                <template x-for="sector in featuredSectors.slice(8, 12)" :key="sector.id">
                     <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
-                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <div class="image-wrapper"><img :src="optimizeImage(sector.image_url, 300)" :alt="sector.name">
+                        </div>
                         <p class="product-name fw-bold" x-text="sector.name"></p>
                     </a>
                 </template>
@@ -425,9 +428,10 @@
         <!-- Carousel 4 -->
         <section class="dark-carousel-section">
             <div class="horizontal-scroll-container" x-ref="carousel4">
-                <template x-for="sector in featuredSectors.slice(15, 20)" :key="sector.id">
+                <template x-for="sector in featuredSectors.slice(12, 16)" :key="sector.id">
                     <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
-                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <div class="image-wrapper"><img :src="optimizeImage(sector.image_url, 300)" :alt="sector.name">
+                        </div>
                         <p class="product-name fw-bold" x-text="sector.name"></p>
                     </a>
                 </template>
@@ -454,7 +458,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in bestsellers" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -470,7 +474,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -486,7 +490,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -497,9 +501,10 @@
         <!-- Carousel 5 -->
         <section class="dark-carousel-section">
             <div class="horizontal-scroll-container" x-ref="carousel5">
-                <template x-for="sector in featuredSectors.slice(20, 25)" :key="sector.id">
+                <template x-for="sector in featuredSectors.slice(16, 20)" :key="sector.id">
                     <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
-                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <div class="image-wrapper"><img :src="optimizeImage(sector.image_url, 300)" :alt="sector.name">
+                        </div>
                         <p class="product-name fw-bold" x-text="sector.name"></p>
                     </a>
                 </template>
@@ -518,7 +523,7 @@
             <div class="horizontal-scroll-container" x-ref="carousel6">
                 <template x-for="sector in featuredSectors.slice(25, 30)" :key="sector.id">
                     <a :href="`/sector.html?name=${encodeURIComponent(sector.name)}`" class="product-cell">
-                        <div class="image-wrapper"><img :src="sector.image_url" :alt="sector.name"></div>
+                        <div class="image-wrapper"><img :src="optimizeImage(sector.image_url, 300)" :alt="sector.name"></div>
                         <p class="product-name fw-bold" x-text="sector.name"></p>
                     </a>
                 </template>
@@ -541,7 +546,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in bestsellers" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -554,7 +559,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[0]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
@@ -567,7 +572,7 @@
                     <div class="inner-product-grid mt-3">
                         <template x-for="product in sections[1]?.products.slice(0, 4)" :key="product.id">
                             <a :href="`/product-detail.html?id=${product.id}`" class="product-image-item">
-                                <img :src="product.main_image_url || '/images/placeholder.png'" alt="Product">
+                                <img :src="optimizeImage(product.main_image_url, 400)" alt="Product">
                             </a>
                         </template>
                     </div>
