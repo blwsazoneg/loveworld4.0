@@ -29,6 +29,7 @@ const __dirname = path.dirname(__filename);
 app.use(helmet({
     contentSecurityPolicy: false, // Disable CSP to allow inline scripts/images (Stripe, Cloudinary, etc.)
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }, // Allow OAuth popups (KingsChat)
+    crossOriginEmbedderPolicy: false, // Allow loading resources from CDNs (Bootstrap Icons)
 }));
 app.use(cors());
 
