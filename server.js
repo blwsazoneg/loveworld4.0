@@ -22,6 +22,10 @@ import vendorRoutes from './routes/vendors.routes.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Enable Trust Proxy for cPanel/Nginx/LiteSpeed
+// This ensures req.protocol checks 'X-Forwarded-Proto' and req.get('host') is correct.
+app.set('trust proxy', 1);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
