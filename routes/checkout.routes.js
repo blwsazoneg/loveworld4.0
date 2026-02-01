@@ -85,8 +85,10 @@ router.post('/create-session', authenticateToken, async (req, res) => {
 
             locale: 'auto', // This tells Stripe to auto-detect the user's language/region.
 
-            success_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/order-success.html?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/cart.html`,
+            // THE FIX: Use dynamic host detection for the redirect URLs
+            // This works in both localhost and production without needing CLIENT_URL
+            success_url: `${req.protocol}://${req.get('host')}/order-success.html?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.protocol}://${req.get('host')}/cart.html`,
             metadata: { userId, cartId }
         });
 

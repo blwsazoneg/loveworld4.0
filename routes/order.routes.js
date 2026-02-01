@@ -62,7 +62,7 @@ router.get('/my-orders', authenticateToken, async (req, res) => {
 
     } catch (error) {
         console.error('Error fetching user orders:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });
     }
 });
 
